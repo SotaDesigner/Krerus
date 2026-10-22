@@ -73,7 +73,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Zoom")
 	float CameraZoomInterpSpeed = 8.0f;
 
-	float TargetCameraDistance = 1400.0f;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	TObjectPtr<class UKrerusCameraComponent> CameraSystem;
 
 	void ZoomCamera(const FInputActionValue& Value);
 
@@ -94,6 +95,7 @@ protected:
 	void Look(const FInputActionValue& Value);
 	void StartSprint();
 	void StopSprint();
+	void UpdateSprint(float DeltaTime);
 	void StartCameraControl();
 	void StopCameraControl();
 	void StopMovementInput();

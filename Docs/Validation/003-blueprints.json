@@ -1,0 +1,42 @@
+{
+  "blueprints": [
+    {
+      "path": "/Game/Core/Character/BP_KrerusCharacter",
+      "status": "<BlueprintStatus.BS_UP_TO_DATE: 3>"
+    },
+    {
+      "path": "/Game/Core/Character/AB_KrerusCharacter",
+      "status": "<BlueprintStatus.BS_UP_TO_DATE: 3>"
+    },
+    {
+      "path": "/Game/Core/GameModes/BP_KrerusGameMode",
+      "status": "<BlueprintStatus.BS_UP_TO_DATE: 3>"
+    }
+  ],
+  "character": {
+    "default_mapping_context": "/Game/Core/Input/IMC_Krerus.IMC_Krerus",
+    "move_action": "/Game/Core/Input/IA_Move.IA_Move",
+    "look_action": "/Game/Core/Input/IA_Look.IA_Look",
+    "jump_action": "/Game/Core/Input/IA_Jump.IA_Jump",
+    "sprint_action": "/Game/Core/Input/IA_Sprint.IA_Sprint",
+    "camera_control_action": "/Game/Core/Input/IA_CameraLockControl.IA_CameraLockControl",
+    "camera_free_action": "/Game/Core/Input/IA_CameraFreeControl.IA_CameraFreeControl",
+    "camera_zoom_action": "/Game/Core/Input/IA_CameraZoom.IA_CameraZoom",
+    "walk_speed": 300.0,
+    "min_camera_distance": 300.0,
+    "max_camera_distance": 1800.0,
+    "camera_zoom_step": 150.0,
+    "camera_zoom_interp_speed": 8.0,
+    "camera_follow_speed": 3.0,
+    "camera_follow_delay": 0.25,
+    "camera_boom": "CameraBoom",
+    "follow_camera": "FollowCamera",
+    "camera_system": "CameraSystem",
+    "spring_arm_target_arm_length": 1400.0,
+    "spring_arm_enable_camera_lag": true,
+    "spring_arm_camera_lag_speed": 12.0,
+    "spring_arm_enable_camera_rotation_lag": false,
+    "spring_arm_do_collision_test": true
+  },
+  "mapping_count": 10
+}

@@ -8,11 +8,11 @@ Proyecto personal de portfolio desarrollado en **Unreal Engine 5.8** con C++ y E
 | --- | --- | --- |
 | [001 — Movimiento y locomoción](Docs/Milestones/001-character-movement.md) | WASD, dos marcos de movimiento, sprint y Blend Space Idle/Walk/Run | Completado en el alcance comunicado; salto pendiente |
 | [002 — Cámara MMORPG](Docs/Milestones/002-mmorpg-camera.md) | Cursor libre, órbita, control relativo, zoom y Spring Arm | Completado según validación del autor; revisión estática realizada |
-| 003 — Separación de responsabilidades | PlayerController, cámara, movimiento e input | Próximo hito; sin implementar |
+| [003 — Separación de responsabilidades](Docs/Milestones/003-cpp-architecture.md) | PlayerController, componente de cámara y archivos de movimiento/input | Extracciones C++ compiladas; regresión automatizada registrada; revisión visual pendiente |
 
 **El salto NO está completado: falta su animación.** Los enlaces existentes a `Jump`/`StopJumping` no constituyen una entrega terminada.
 
-La revisión del 22 de octubre de 2026 confirma la implementación C++ y la presencia de assets. No incluye una nueva compilación ni pruebas Play; las comprobaciones pendientes están descritas en los hitos. Los valores de Blueprint pueden sobrescribir los valores C++.
+La revisión de los hitos 001/002 documentó código y assets. El Hito 003 añade compilación de KrerusEditor con UE 5.8.4, compilación de tres Blueprints y pruebas automatizadas en Play sin renderizado. La comprobación visual de locomoción, suavizado y colisiones sigue pendiente. Los valores de Blueprint pueden sobrescribir los valores C++.
 
 ## Controles y comportamiento
 
@@ -40,8 +40,12 @@ La locomoción utiliza `AB_KrerusCharacter` y `BS_WalkRun` para Idle/Walk/Run. L
 
 ```text
 Source/Krerus/                  Código C++ del módulo
-  Public/KrerusCharacter.h     Declaraciones y parámetros
-  Private/KrerusCharacter.cpp  Movimiento, cámara e input actuales
+  Public/KrerusCharacter.h             Declaraciones y parámetros compatibles con Blueprint
+  Public/KrerusCameraComponent.h       Sistema de zoom y límites verticales
+  Public/KrerusPlayerController.h      Cursor y modos de entrada
+  Private/KrerusCharacter.cpp          Construcción y coordinación por frame
+  Private/KrerusCharacterMovement.cpp  Movimiento direccional y sprint
+  Private/KrerusCharacterInput.cpp     Enhanced Input y handlers
 Content/Core/Character/        Personaje, Animation Blueprint y Blend Space
 Content/Core/Input/            Acciones y Mapping Context de Enhanced Input
 Content/Core/GameModes/        GameMode del proyecto
@@ -50,9 +54,11 @@ Config/                       Configuración del proyecto
 Docs/Milestones/               Objetivos, decisiones, pruebas y próximos pasos
 ```
 
-## Próximo paso: Hito 003
+## Hito 003 — Refactorización incremental
 
-Refactorizar `AKrerusCharacter` en responsabilidades/clases separadas para **PlayerController, cámara, movimiento e input**. Mantener el comportamiento de los hitos 001/002 y validar cada extracción con compilación y pruebas en Play antes de continuar. La distribución concreta de clases/componentes se decidirá durante ese hito.
+El zoom y los límites de pitch se delegan en `UKrerusCameraComponent`; cursor y modos GameOnly/GameAndUI, en `AKrerusPlayerController`. Movimiento e input se organizan en archivos de la misma clase para conservar referencias y evitar componentes innecesarios. `UCharacterMovementComponent`, los nombres de los subobjetos y las propiedades Blueprint existentes se conservan.
+
+El GameMode mantiene su PlayerController anterior. La ruta de compatibilidad utiliza la política extraída sin exigir cambios en assets. La nueva clase nativa también admite la selección como Player Controller Class; esa migración de configuración no forma parte de las pruebas actuales. Ver [decisiones y evidencias del Hito 003](Docs/Milestones/003-cpp-architecture.md). Próximo cierre: regresión visual en el editor; el salto animado sigue pendiente.
 
 ## Portfolio y versión propuesta
 

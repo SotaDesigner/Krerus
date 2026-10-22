@@ -1,0 +1,40 @@
+{
+  "unchanged_functions": [
+    "Move",
+    "StartSprint",
+    "StopSprint",
+    "StopMovementInput",
+    "Look",
+    "StartCameraControl",
+    "StopCameraControl",
+    "StartFreeCamera",
+    "StopFreeCamera",
+    "SetupPlayerInputComponent"
+  ],
+  "unchanged_blueprint_properties": [
+    "TObjectPtr<class USpringArmComponent> CameraBoom;",
+    "TObjectPtr<class UCameraComponent> FollowCamera;",
+    "TObjectPtr<UInputMappingContext> DefaultMappingContext;",
+    "TObjectPtr<UInputAction> MoveAction;",
+    "TObjectPtr<UInputAction> LookAction;",
+    "TObjectPtr<UInputAction> JumpAction;",
+    "TObjectPtr<UInputAction> SprintAction;",
+    "TObjectPtr<UInputAction> CameraControlAction;",
+    "TObjectPtr<UInputAction> CameraFreeAction;",
+    "TObjectPtr<UInputAction> CameraZoomAction;",
+    "float CameraFollowSpeed = 3.0f;",
+    "float CameraFollowDelay = 0.25f;",
+    "float MinCameraDistance = 300.0f;",
+    "float MaxCameraDistance = 1800.0f;",
+    "float CameraZoomStep = 150.0f;",
+    "float CameraZoomInterpSpeed = 8.0f;",
+    "float WalkSpeed = 300.0f;",
+    "bool bIsDecelerating = false;",
+    "bool bIsCameraControlActive = false;"
+  ],
+  "unchanged_asset_bytes": [
+    "BP_KrerusCharacter.uasset",
+    "AB_KrerusCharacter.uasset",
+    "BP_KrerusGameMode.uasset"
+  ]
+}

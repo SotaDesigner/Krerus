@@ -1,0 +1,87 @@
+[
+  {
+    "test": "cursor_idle",
+    "passed": true,
+    "detail": "PlayerController"
+  },
+  {
+    "test": "W_movement",
+    "passed": true,
+    "detail": "431.77206870854104"
+  },
+  {
+    "test": "sprint",
+    "passed": true,
+    "detail": "600.0"
+  },
+  {
+    "test": "sprint_return",
+    "passed": true,
+    "detail": "300.0"
+  },
+  {
+    "test": "left_cursor_hidden",
+    "passed": true,
+    "detail": "False"
+  },
+  {
+    "test": "left_orbit",
+    "passed": true,
+    "detail": "92.5"
+  },
+  {
+    "test": "both_buttons",
+    "passed": true,
+    "detail": "False"
+  },
+  {
+    "test": "right_remains_active",
+    "passed": true,
+    "detail": "False"
+  },
+  {
+    "test": "release_both",
+    "passed": true,
+    "detail": "True"
+  },
+  {
+    "test": "idle_ignores_look",
+    "passed": true,
+    "detail": "0.0"
+  },
+  {
+    "test": "zoom_in",
+    "passed": true,
+    "detail": "300.0052490234375"
+  },
+  {
+    "test": "zoom_out",
+    "passed": true,
+    "detail": "1799.9921875"
+  },
+  {
+    "test": "pitch_limit",
+    "passed": true,
+    "detail": "-75.0"
+  },
+  {
+    "test": "right_movement_camera_yaw",
+    "passed": true,
+    "detail": "<Struct 'Vector' (0x000002CDA6C1A8B0) {x: 0.000005, y: 431.769968, z: 0.000000}>"
+  },
+  {
+    "test": "free_movement_keeps_reference",
+    "passed": true,
+    "detail": "<Struct 'Vector' (0x000002CDA6C1A950) {x: 0.000006, y: 455.009280, z: 0.000000}>"
+  },
+  {
+    "test": "left_remains_active",
+    "passed": true,
+    "detail": "False"
+  },
+  {
+    "test": "release_both_reverse",
+    "passed": true,
+    "detail": "True"
+  }
+]

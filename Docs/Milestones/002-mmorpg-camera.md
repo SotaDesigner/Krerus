@@ -96,3 +96,8 @@ Separar responsabilidades/clases de PlayerController, cámara, movimiento e inpu
 Segundo hito de Krerus: cámara híbrida de estilo MMORPG en Unreal Engine 5.8 con C++ y Enhanced Input. Cursor libre, órbita con clic izquierdo, control relativo con clic derecho y zoom suave con límites, junto con CameraLag de posición y colisiones mediante Spring Arm. El siguiente paso será separar las responsabilidades de personaje, cámara e input, validando cada cambio. Documento los avances y sus límites como parte de mi portfolio. #UnrealEngine #CPP #GameDev #Portfolio
 
 Borrador para usar tras confirmar las pruebas de cámara y colisiones; no publicado.
+
+
+## Continuidad del Hito 003
+
+El 22 de octubre de 2026 se implementaron extracciones incrementales de cámara, cursor y archivos de movimiento/input. KrerusEditor compila y se registraron 17 comprobaciones aprobadas en Play sin renderizado. La inspección visual sigue pendiente; no sustituye las pruebas anteriores ni completa el salto. Ver [arquitectura, compatibilidad y evidencias](003-cpp-architecture.md).
