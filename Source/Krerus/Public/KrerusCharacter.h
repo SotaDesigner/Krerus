@@ -49,6 +49,34 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> CameraControlAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> CameraFreeAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> CameraZoomAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	float CameraFollowSpeed = 3.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	float CameraFollowDelay = 0.25f;	
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Zoom")
+	float MinCameraDistance = 300.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Zoom")
+	float MaxCameraDistance = 1800.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Zoom")
+	float CameraZoomStep = 150.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Zoom")
+	float CameraZoomInterpSpeed = 8.0f;
+
+	float TargetCameraDistance = 1400.0f;
+
+	void ZoomCamera(const FInputActionValue& Value);
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	float WalkSpeed = 300.0f;
 
@@ -57,6 +85,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	bool bIsCameraControlActive = false;
+	bool bIsFreeCameraActive = false;
 
 	FRotator FreeMovementRotation = FRotator::ZeroRotator;
 	bool bWasMoving = false;
@@ -68,6 +97,9 @@ protected:
 	void StartCameraControl();
 	void StopCameraControl();
 	void StopMovementInput();
+	void StartFreeCamera();
+	void StopFreeCamera();
+	void UpdateMouseCapture();
 
 public:	
 	// Called every frame

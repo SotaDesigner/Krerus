@@ -37,3 +37,12 @@ Desktop.ini
 *.sln
 *.suo
 *.user
+# Additional generated outputs
+/Plugins/**/Binaries/
+/Plugins/**/Intermediate/
+.idea/
+# Local secrets and overrides
+.env
+.env.*
+!.env.example
+/Config/User*.ini
