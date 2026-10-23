@@ -51,6 +51,10 @@ void AKrerusCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		{
 			EnhacedInput->BindAction(CameraZoomAction,ETriggerEvent::Triggered,this,&AKrerusCharacter::ZoomCamera);
 		}
+		if (ClearTargetAction)
+		{
+			EnhacedInput->BindAction(ClearTargetAction,ETriggerEvent::Started,this,&AKrerusCharacter::ClearTarget);
+		}
 	}
 	else
 	{
@@ -111,6 +115,14 @@ void AKrerusCharacter::Look(const FInputActionValue& Value)
 
 	const FVector2D LookAxisVector = Value.Get<FVector2D>();
 
+	if (bIsFreeCameraActive)
+	{
+		if (AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController()))
+		{
+			PC->RegisterLeftMouseMovement(LookAxisVector);
+		}
+	}
+
 	AddControllerYawInput(LookAxisVector.X);
 	AddControllerPitchInput(LookAxisVector.Y);
 }
@@ -130,6 +142,14 @@ void AKrerusCharacter::StopCameraControl()
 
 void AKrerusCharacter::StartFreeCamera()
 {
+	UE_LOG(LogTemp, Warning, TEXT("KRERUS: Controller actual: %s"),
+		*GetNameSafe(GetController()));
+
+	if (AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController()))
+	{
+		PC->BeginLeftMouseClick();
+	}
+
 	bIsFreeCameraActive = true;
 	UpdateMouseCapture();
 }
@@ -138,6 +158,11 @@ void AKrerusCharacter::StopFreeCamera()
 {
 	bIsFreeCameraActive = false;
 	UpdateMouseCapture();
+
+	if (AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController()))
+	{
+		PC->EndLeftMouseClick();
+	}
 }
 
 void AKrerusCharacter::UpdateMouseCapture()
@@ -159,4 +184,13 @@ void AKrerusCharacter::ZoomCamera(const FInputActionValue& Value)
 	const float ZoomInput = Value.Get<float>();
 
 	CameraSystem->ZoomCamera(ZoomInput, CameraZoomStep, MinCameraDistance, MaxCameraDistance);
+}
+
+void AKrerusCharacter::ClearTarget()
+{
+	if (AKrerusPlayerController* PC =
+		Cast<AKrerusPlayerController>(GetController()))
+	{
+		PC->ClearSelectedEnemy();
+	}
 }

@@ -53,4 +53,39 @@ void AKrerusCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	UpdateSprint(DeltaTime);
 	CameraSystem->UpdateCamera(CameraBoom, DeltaTime, CameraZoomInterpSpeed);
+
+	const float DesiredDistance = CameraBoom->TargetArmLength;
+	const float ActualDistance = FVector::Distance(
+		CameraBoom->GetComponentLocation(),
+		FollowCamera->GetComponentLocation()
+	);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			10,
+			0.0f,
+			FColor::Yellow,
+			FString::Printf(
+				TEXT("Camara - Deseada: %.0f | Real: %.0f"),
+				DesiredDistance,
+				ActualDistance
+			)
+		);
+	}
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			11,
+			0.0f,
+			FColor::Cyan,
+			FString::Printf(
+				TEXT("SpringArm Collision: %s"),
+				CameraBoom->IsCollisionFixApplied()
+				? TEXT("SI")
+				: TEXT("NO")
+			)
+		);
+	}
 }

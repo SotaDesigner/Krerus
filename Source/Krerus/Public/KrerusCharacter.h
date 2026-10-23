@@ -55,6 +55,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> CameraZoomAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ClearTargetAction;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
 	float CameraFollowSpeed = 3.0f;
 
@@ -102,6 +105,7 @@ protected:
 	void StartFreeCamera();
 	void StopFreeCamera();
 	void UpdateMouseCapture();
+	void ClearTarget();
 
 public:	
 	// Called every frame
