@@ -1,4 +1,8 @@
-# Hito 003 — Refactorización de la arquitectura C++
+# Contexto técnico — Separación de responsabilidades C++
+
+> Reclasificación documental: 23 de octubre de 2026. La refactorización **no es un hito**. El Hito 003 vigente es [Sistema de selección e interacción con NPC y enemigos](003-npc-selection-interaction.md). Se conserva este nombre de archivo para no romper enlaces anteriores y mantener las evidencias técnicas.
+>
+> Todo el registro siguiente describe la extracción del **22 de octubre**, no el estado funcional actual. En particular, la sección de compatibilidad que indica un GameMode con `Engine.PlayerController` es histórica: los logs posteriores registran `KrerusPlayerController_0` y el asset actual referencia `KrerusPlayerController`. Los 17 casos y JSON con prefijo 003 solo cubren la extracción de movimiento/cámara, no selección/interacción. Las instrucciones de scripts no se han vuelto a ejecutar para esta revisión.
 
 Fecha: 22 de octubre de 2026. Unreal Engine comprobado: **5.8.4**. Estado: extracciones implementadas y compiladas; pruebas automatizadas aprobadas; cierre visual pendiente. Salto animado pendiente, fuera de este hito.
 
@@ -78,6 +82,6 @@ Los cambios 003 se añaden sobre ese árbol, sin restaurar archivos desde HEAD n
 Commit propuesto, después de revisar el diff respecto a los cambios 002: `refactor: separate camera, cursor and character input responsibilities`. Incluir fuentes nuevas, documentación y scripts de comprobación; no seleccionar automáticamente el vídeo ni mezclar la retirada previa de configuración sensible. El cierre visual debe registrarse antes de publicar la entrega del hito.
 
 
-## Registro de commits � 22 de octubre de 2026
+## Registro histórico de commits — 22 de octubre de 2026
 
-Por petici�n del autor se separan los hitos en dos commits locales. El Hito 002 queda en `5315396`, usando las fuentes guardadas antes de la refactorizaci�n. El commit posterior contiene las extracciones, documentaci�n y evidencias del Hito 003. Las menciones anteriores a ausencia de commits describen la fase de implementaci�n previa a esta petici�n. No se realiza push ni se crea etiqueta. El v�deo local y el cambio de configuraci�n ajeno a los hitos quedan sin incluir.
+El registro previo indica dos commits locales: la cámara en `5315396` y una extracción posterior de responsabilidades. Es información histórica del 22 de octubre, no una consulta Git actual. No acredita un hito funcional separado ni valida la selección e interacción añadidas después. No se verifica aquí el estado del remoto ni de las etiquetas.

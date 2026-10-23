@@ -58,6 +58,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> ClearTargetAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> InteractAction;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
 	float CameraFollowSpeed = 3.0f;
 
@@ -106,6 +109,7 @@ protected:
 	void StopFreeCamera();
 	void UpdateMouseCapture();
 	void ClearTarget();
+	void Interact();
 
 public:	
 	// Called every frame

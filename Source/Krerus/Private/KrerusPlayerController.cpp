@@ -1,5 +1,5 @@
 #include "KrerusPlayerController.h"
-#include "KrerusEnemy.h"
+#include "KrerusNPC.h"
 
 void AKrerusPlayerController::UpdateMouseCapture(bool bIsCameraControlActive, bool bIsFreeCameraActive)
 {
@@ -39,11 +39,11 @@ void AKrerusPlayerController::SelectEnemyAtScreenPosition(const FVector2D& Scree
 		return;
 	}
 
-	AKrerusEnemy* Enemy = Cast<AKrerusEnemy>(Hit.GetActor());
+	AKrerusNPC* NPC = Cast<AKrerusNPC>(Hit.GetActor());
 	
-	if (Enemy) 
+	if (NPC) 
 	{
-		SetSelectedEnemy(Enemy);
+		SetSelectedNPC(NPC);
 	}
 }
 
@@ -100,32 +100,37 @@ void AKrerusPlayerController::RegisterLeftMouseMovement(
 	}
 }
 
-void AKrerusPlayerController::SetSelectedEnemy(AKrerusEnemy* NewEnemy)
+void AKrerusPlayerController::SetSelectedNPC(AKrerusNPC* NewEnemy)
 {
-	if (SelectedEnemy.Get() == NewEnemy)
+	if (SelectedNPC.Get() == NewEnemy)
 	{
 		return;
 	}
 
-	if (SelectedEnemy.IsValid() && SelectedEnemy != NewEnemy)
+	if (SelectedNPC.IsValid() && SelectedNPC != NewEnemy)
 	{
-		SelectedEnemy->SetSelectionRingVisible(false);
+		SelectedNPC->SetSelectionRingVisible(false);
 	}
 
-	SelectedEnemy = NewEnemy;
+	SelectedNPC = NewEnemy;
 
-	if (SelectedEnemy.IsValid())
+	if (SelectedNPC.IsValid())
 	{
-		SelectedEnemy->SetSelectionRingVisible(true);
-		UE_LOG(LogTemp, Warning,TEXT("KRERUS: Nuevo objetivo: %s"),*SelectedEnemy->GetName());
+		SelectedNPC->SetSelectionRingVisible(true);
+		UE_LOG(LogTemp, Warning,TEXT("KRERUS: Nuevo objetivo: %s"),*SelectedNPC->GetName());
 	}
 }
 
 void AKrerusPlayerController::ClearSelectedEnemy()
 {
-	if (SelectedEnemy.IsValid())
+	if (SelectedNPC.IsValid())
 	{
 		UE_LOG(LogTemp, Warning,TEXT("KRERUS: Objetivo cancelado"));
 	}
-	SetSelectedEnemy(nullptr);
+	SetSelectedNPC(nullptr);
+}
+
+AKrerusNPC* AKrerusPlayerController::GetSelectedNPC() const
+{
+	return SelectedNPC.Get();
 }

@@ -32,3 +32,8 @@ void AKrerusNPC::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent
 
 }
 
+void AKrerusNPC::Interact_Implementation(AActor* Interactor)
+{
+	UE_LOG(LogTemp, Warning,TEXT("KRERUS: Interaccion con NPC: %s"),*GetName());
+}
+

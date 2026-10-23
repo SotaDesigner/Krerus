@@ -6,6 +6,8 @@
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "InputActionValue.h"
+#include "KrerusNPC.h"
+#include "KrerusInteractable.h"
 
 void AKrerusCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -54,6 +56,10 @@ void AKrerusCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		if (ClearTargetAction)
 		{
 			EnhacedInput->BindAction(ClearTargetAction,ETriggerEvent::Started,this,&AKrerusCharacter::ClearTarget);
+		}
+		if (InteractAction)
+		{
+			EnhacedInput->BindAction(InteractAction,ETriggerEvent::Started,this,&AKrerusCharacter::Interact);
 		}
 	}
 	else
@@ -188,9 +194,41 @@ void AKrerusCharacter::ZoomCamera(const FInputActionValue& Value)
 
 void AKrerusCharacter::ClearTarget()
 {
-	if (AKrerusPlayerController* PC =
-		Cast<AKrerusPlayerController>(GetController()))
+	if (AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController()))
 	{
 		PC->ClearSelectedEnemy();
+	}
+}
+
+void AKrerusCharacter::Interact()
+{
+	AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController());
+
+	if (!PC)
+	{
+		return;
+	}
+
+	AKrerusNPC* SelectedNPC = PC->GetSelectedNPC();
+
+	if (!IsValid(SelectedNPC))
+	{
+		return;
+	}
+
+	// Calculamos la distancia horizontal entre jugador y NPC
+	const float Distance = FVector::Dist2D(GetActorLocation(),SelectedNPC->GetActorLocation());
+
+	// Comprobamos si estamos dentro del alcance
+	if (Distance > SelectedNPC->GetInteractionDistance())
+	{
+		UE_LOG(LogTemp, Warning,TEXT("KRERUS: NPC demasiado lejos. Distancia: %.0f / Maxima: %.0f"),Distance,SelectedNPC->GetInteractionDistance());
+		return;
+	}
+
+	// Ejecutamos la interacción mediante la interfaz
+	if (SelectedNPC->GetClass()->ImplementsInterface(UKrerusInteractable::StaticClass()))
+	{
+		IKrerusInteractable::Execute_Interact(SelectedNPC, this);
 	}
 }

@@ -4,7 +4,7 @@
 #include "GameFramework/PlayerController.h"
 #include "KrerusPlayerController.generated.h"
 
-class AKrerusEnemy;
+class AKrerusNPC;
 
 UCLASS()
 class KRERUS_API AKrerusPlayerController : public APlayerController
@@ -17,16 +17,18 @@ public:
 	// Compatibilidad con mapas que todavia usen el PlayerController anterior.
 	static void ApplyMouseCapture(APlayerController* PC, bool bIsCameraControlActive, bool bIsFreeCameraActive);
 
+	AKrerusNPC* GetSelectedNPC() const;
+
 	void SelectEnemyAtScreenPosition(const FVector2D& ScreenPosition);
 	void BeginLeftMouseClick();
 	void EndLeftMouseClick();
 	void RegisterLeftMouseMovement(const FVector2D& MouseDelta);
-	void SetSelectedEnemy(AKrerusEnemy* NewEnemy);
+	void SetSelectedNPC(AKrerusNPC* NewEnemy);
 	void ClearSelectedEnemy();
 
 protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Targeting")
-	TWeakObjectPtr<AKrerusEnemy> SelectedEnemy;
+	TWeakObjectPtr<AKrerusNPC> SelectedNPC;
 
 	FVector2D LeftClickScreenPosition = FVector2D::ZeroVector;
 	bool bLeftMousePressed = false;

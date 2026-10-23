@@ -76,4 +76,4 @@ El registro Git anterior describe la revisión previa de 001; no representa el �
 
 Se conserva la prueba histórica de avance con W como evidencia limitada; no sustituye la regresión completa. El salto continúa NO completado por falta de animación.
 
-El próximo Hito 003 separará `KrerusCharacter` en responsabilidades/clases de PlayerController, cámara, movimiento e input. Se validará cada extracción con compilación, referencias de Blueprint y pruebas de regresión de los dos primeros hitos.
+Actualización documental del 23 de octubre de 2026: la separación de responsabilidades C++ se conserva como [contexto técnico](003-cpp-architecture.md), sin numerarla como hito. Movimiento e input residen ahora en `KrerusCharacterMovement.cpp` y `KrerusCharacterInput.cpp`, dentro de la misma clase. Las ubicaciones y estados anteriores describen la revisión histórica de 001. El [Hito 003](003-npc-selection-interaction.md) documenta selección e interacción con NPC y enemigos y exige repetir las regresiones de movimiento/cámara; no completa el salto.

@@ -87,17 +87,19 @@ Tras revisar y validar los cambios funcionales existentes:
 
 No usar una selección global que incluya el vídeo sin revisión. No se ha creado ningún commit o tag, hecho push ni publicado. La etiqueta se propone para una entrega que incluya las fuentes y assets, no solo documentación. Push/publicación requieren confirmación explícita.
 
-## Próximo Hito 003 — Refactorización
+## Continuidad técnica y Hito 003
 
-Separar responsabilidades/clases de PlayerController, cámara, movimiento e input actualmente concentradas en `KrerusCharacter`. Definir propietarios de estado y referencias de assets antes de mover código. Realizar extracciones pequeñas: compilar, comprobar asignaciones/serialización de Blueprint y repetir las pruebas 001/002 después de cada cambio. Mantener controles y parámetros como referencia de regresión; no combinar la refactorización con nuevas mecánicas. Revisar campos sin uso y gestión de cancelación con validación explícita.
+Actualización documental del 23 de octubre de 2026: la separación de PlayerController, cámara y archivos de movimiento/input es [contexto técnico](003-cpp-architecture.md), no un hito separado. Los apartados anteriores conservan la implementación y validación histórica de 002, cuando el código estaba concentrado en el Character. La implementación actual reparte input en `KrerusCharacterInput.cpp`, zoom/límites en `UKrerusCameraComponent` y cursor/selección en `AKrerusPlayerController`.
+
+El [Hito 003 — Sistema de selección e interacción con NPC y enemigos](003-npc-selection-interaction.md) amplía el clic izquierdo distinguiendo clic/arrastre y añade limpiar objetivo e interacción con alcance. Incluye la incidencia comunicada de compresión del Spring Arm por el Skeletal Mesh bloqueando Camera. Deben repetirse las regresiones de cursor, órbita, zoom y colisiones; las pruebas previas no acreditan los nuevos sistemas.
 
 ## Propuesta breve para LinkedIn
 
-Segundo hito de Krerus: cámara híbrida de estilo MMORPG en Unreal Engine 5.8 con C++ y Enhanced Input. Cursor libre, órbita con clic izquierdo, control relativo con clic derecho y zoom suave con límites, junto con CameraLag de posición y colisiones mediante Spring Arm. El siguiente paso será separar las responsabilidades de personaje, cámara e input, validando cada cambio. Documento los avances y sus límites como parte de mi portfolio. #UnrealEngine #CPP #GameDev #Portfolio
+Segundo hito de Krerus: cámara híbrida de estilo MMORPG en Unreal Engine 5.8 con C++ y Enhanced Input. Cursor libre, órbita con clic izquierdo, control relativo con clic derecho y zoom suave con límites, junto con CameraLag de posición y colisiones mediante Spring Arm. La separación posterior de responsabilidades queda como contexto técnico; el Hito 003 incorpora selección e interacción con NPC y enemigos. Documento los avances y sus límites como parte de mi portfolio. #UnrealEngine #CPP #GameDev #Portfolio
 
 Borrador para usar tras confirmar las pruebas de cámara y colisiones; no publicado.
 
 
-## Continuidad del Hito 003
+## Registro histórico de la extracción C++
 
-El 22 de octubre de 2026 se implementaron extracciones incrementales de cámara, cursor y archivos de movimiento/input. KrerusEditor compila y se registraron 17 comprobaciones aprobadas en Play sin renderizado. La inspección visual sigue pendiente; no sustituye las pruebas anteriores ni completa el salto. Ver [arquitectura, compatibilidad y evidencias](003-cpp-architecture.md).
+El 22 de octubre de 2026 se implementaron extracciones incrementales de cámara, cursor y archivos de movimiento/input. KrerusEditor compila y se registraron 17 comprobaciones aprobadas en Play sin renderizado. La inspección visual sigue pendiente; no sustituye las pruebas anteriores ni completa el salto. Ver [arquitectura, compatibilidad y evidencias](003-cpp-architecture.md). Ese registro no constituye un hito separado ni valida selección/interacción.
