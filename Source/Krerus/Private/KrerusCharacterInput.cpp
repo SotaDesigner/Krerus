@@ -61,11 +61,25 @@ void AKrerusCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		{
 			EnhacedInput->BindAction(InteractAction,ETriggerEvent::Started,this,&AKrerusCharacter::Interact);
 		}
+		if (AutoAttackAction)
+		{
+			EnhacedInput->BindAction(AutoAttackAction,ETriggerEvent::Started,this,&AKrerusCharacter::OnAutoAttack);
+		}
 	}
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("KRERUS: El componente NO es EnhancedInputComponent"));
 	}
+}
+
+UKrerusCombatComponent* AKrerusCharacter::GetCombatComponent() const
+{
+	return CombatComponent.Get();
+}
+
+UKrerusAttributeComponent* AKrerusCharacter::GetAttributeComponent() const
+{
+	return AttributeComponent.Get();
 }
 
 void AKrerusCharacter::PawnClientRestart()
@@ -231,4 +245,21 @@ void AKrerusCharacter::Interact()
 	{
 		IKrerusInteractable::Execute_Interact(SelectedNPC, this);
 	}
+}
+
+void AKrerusCharacter::OnAutoAttack()
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1,3.0f,FColor::Yellow,TEXT("KRERUS: TECLA T DETECTADA"));
+	}
+
+	AKrerusPlayerController* KrerusController =	Cast<AKrerusPlayerController>(GetController());
+
+	if (!IsValid(KrerusController))
+	{
+		return;
+	}
+
+	KrerusController->ToggleAutoAttack();
 }

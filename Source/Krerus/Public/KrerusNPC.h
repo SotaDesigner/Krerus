@@ -39,5 +39,8 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Targeting")
 	void SetSelectionRingVisible(bool bVisible);
 
+	UFUNCTION(BlueprintPure, Category = "Attributes")
+	UKrerusAttributeComponent* GetAttributeComponent() const { return AttributeComponent.Get(); }
+
 	float GetInteractionDistance() const { return InteractionDistance; }
 };

@@ -25,6 +25,10 @@ public:
 	void RegisterLeftMouseMovement(const FVector2D& MouseDelta);
 	void SetSelectedNPC(AKrerusNPC* NewEnemy);
 	void ClearSelectedEnemy();
+	void ClearSelectionIfTarget(AKrerusNPC* Target);
+
+	UFUNCTION(BlueprintCallable,Category = "Combat")
+	void ToggleAutoAttack();
 
 protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Targeting")

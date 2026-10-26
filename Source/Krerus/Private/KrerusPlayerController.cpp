@@ -1,5 +1,8 @@
 #include "KrerusPlayerController.h"
 #include "KrerusNPC.h"
+#include "KrerusCharacter.h"
+#include "KrerusEnemy.h"
+#include "KrerusCombatComponent.h"
 
 void AKrerusPlayerController::UpdateMouseCapture(bool bIsCameraControlActive, bool bIsFreeCameraActive)
 {
@@ -107,6 +110,18 @@ void AKrerusPlayerController::SetSelectedNPC(AKrerusNPC* NewEnemy)
 		return;
 	}
 
+	AKrerusCharacter* PlayerCharacter = Cast<AKrerusCharacter>(GetPawn());
+
+	if (IsValid(PlayerCharacter))
+	{
+		UKrerusCombatComponent* Combat = PlayerCharacter->GetCombatComponent();
+
+		if (IsValid(Combat))
+		{
+			Combat->SetCombatTarget(nullptr);
+		}
+	}
+
 	if (SelectedNPC.IsValid() && SelectedNPC != NewEnemy)
 	{
 		SelectedNPC->SetSelectionRingVisible(false);
@@ -127,10 +142,75 @@ void AKrerusPlayerController::ClearSelectedEnemy()
 	{
 		UE_LOG(LogTemp, Warning,TEXT("KRERUS: Objetivo cancelado"));
 	}
+
 	SetSelectedNPC(nullptr);
+
+	AKrerusCharacter* PlayerCharacter = Cast<AKrerusCharacter>(GetPawn());
+
+	if (IsValid(PlayerCharacter))
+	{
+		UKrerusCombatComponent* Combat = PlayerCharacter->GetCombatComponent();
+
+		if (IsValid(Combat))
+		{
+			Combat->SetCombatTarget(nullptr);
+		}
+	}
+}
+
+void AKrerusPlayerController::ClearSelectionIfTarget(AKrerusNPC* Target)
+{
+	if (SelectedNPC.Get() != Target)
+	{
+		return;
+	}
+
+	ClearSelectedEnemy();
 }
 
 AKrerusNPC* AKrerusPlayerController::GetSelectedNPC() const
 {
 	return SelectedNPC.Get();
+}
+
+void AKrerusPlayerController::ToggleAutoAttack()
+{
+	AKrerusCharacter* PlayerCharacter =	Cast<AKrerusCharacter>(GetPawn());
+
+	if (!IsValid(PlayerCharacter))
+	{
+		return;
+	}
+
+	UKrerusCombatComponent* Combat = PlayerCharacter->GetCombatComponent();
+
+	if (!IsValid(Combat))
+	{
+		return;
+	}
+
+	if (Combat->IsAutoAttacking())
+	{
+		Combat->StopAutoAttack();
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1,3.0f,FColor::Red,TEXT("KRERUS: Autoataque DESACTIVADO"));
+		}
+		return;
+	}
+
+	AKrerusEnemy* Enemy = Cast<AKrerusEnemy>(SelectedNPC.Get());
+
+	if (!IsValid(Enemy))
+	{
+		return;
+	}
+
+	Combat->SetCombatTarget(Enemy);
+	Combat->StartAutoAttack();
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1,3.0f,FColor::Green,TEXT("KRERUS: Autoataque ACTIVADO"));
+	}
 }

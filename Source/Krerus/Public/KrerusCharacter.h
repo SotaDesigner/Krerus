@@ -9,6 +9,7 @@
 class UInputMappingContext;
 class UInputAction;
 class UKrerusAttributeComponent;
+class UKrerusCombatComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -62,6 +63,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> InteractAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Combat")
+	TObjectPtr<UInputAction> AutoAttackAction;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
 	float CameraFollowSpeed = 3.0f;
 
@@ -101,6 +105,15 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes")
 	TObjectPtr<UKrerusAttributeComponent> AttributeComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UKrerusCombatComponent> CombatComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Animation")
+	TObjectPtr<UAnimMontage> AutoAttackMontage = nullptr;
+
+	UFUNCTION()
+	void OnAutoAttackMontageEnded(UAnimMontage* Montage,bool bInterrupted);
+
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 	void StartSprint();
@@ -114,6 +127,7 @@ protected:
 	void UpdateMouseCapture();
 	void ClearTarget();
 	void Interact();
+	void OnAutoAttack();
 
 public:
 	// Called every frame
@@ -121,5 +135,20 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	UKrerusCombatComponent* GetCombatComponent() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Combat|Animation")
+	void PlayAutoAttackMontage(float AttackInterval);
+
+	bool IsAutoAttackMontagePlaying() const;
+
+	UFUNCTION(BlueprintPure, Category = "Attributes")
+	UKrerusAttributeComponent* GetAttributeComponent() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Combat|Animation")
+	void OnAutoAttackImpact();
+
 
 };
