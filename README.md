@@ -10,6 +10,8 @@ Proyecto personal de portfolio desarrollado en **Unreal Engine 5.8** con C++ y E
 | [002 — Cámara MMORPG](Docs/Milestones/002-mmorpg-camera.md) | Cursor libre, órbita, control relativo, zoom y Spring Arm | Completado según validación del autor; revisión estática realizada |
 | [003 — Selección e interacción con NPC y enemigos](Docs/Milestones/003-npc-selection-interaction.md) | Clic/arrastre, objetivo único, Escape, aro y F con alcance horizontal por NPC | Implementado en fuentes y con logs previos; aceptación actual en editor pendiente |
 
+| [004 — Sistema modular de atributos y recursos](Docs/Milestones/004-modular-attributes-resources.md) | Vida, recursos, primarios, modificadores independientes y derivados | Implementado y probado por el autor; compilación de cierre bloqueada por DLL en uso |
+
 **El salto NO está completado: falta su animación.** Los enlaces existentes a `Jump`/`StopJumping` no constituyen una entrega terminada.
 
 La revisión del 23 de octubre de 2026 contrasta el Hito 003 con fuentes, assets y logs guardados; no ejecuta una nueva compilación ni Play. La extracción C++ previa conserva sus pruebas históricas como contexto técnico, sin constituir un hito. Quedan pendientes los mappings efectivos, conexiones Blueprint y aceptación visual/funcional actual. Los valores de Blueprint pueden sobrescribir los defaults C++.
@@ -37,7 +39,7 @@ La locomoción utiliza `AB_KrerusCharacter` y `BS_WalkRun` para Idle/Walk/Run. L
 1. Instalar Unreal Engine 5.8 y las herramientas C++ compatibles con esa instalación.
 2. Clonar con Git LFS instalado y ejecutar `git lfs pull`.
 3. Generar los archivos desde `Krerus.uproject` y compilar `KrerusEditor` en Development Editor para Windows.
-4. Abrir `/Game/Dev/Maps/L_DevSandbox`, ejecutar Play y seguir las listas de comprobación de los hitos 001, 002 y 003. Verificar también GameMode, PlayerController y acciones efectivas del mapa.
+4. Abrir `/Game/Dev/Maps/L_DevSandbox`, ejecutar Play y seguir las listas de comprobación de los hitos 001, 002, 003 y 004. Verificar también GameMode, PlayerController y acciones efectivas del mapa.
 
 ## Estructura
 
@@ -66,7 +68,11 @@ Docs/Milestones/               Objetivos, decisiones, pruebas y próximos pasos
 
 `AKrerusNPC` implementa `IKrerusInteractable` y sirve de base para `AKrerusEnemy`. `AKrerusPlayerController` conserva `SelectedNPC` como referencia débil y diferencia clic/arrastre. El Character enlaza las acciones y calcula `FVector::Dist2D` antes de ejecutar la interfaz; el alcance pertenece al NPC. C++ notifica `SetSelectionRingVisible(bool)` y cada Blueprint resuelve su aro mediante material y visibilidad. La interacción nativa actual registra un mensaje, sin diálogo ni combate.
 
-Ver [arquitectura, flujo, incidencias y pruebas del Hito 003](Docs/Milestones/003-npc-selection-interaction.md). La [separación C++ previa](Docs/Milestones/003-cpp-architecture.md) se mantiene como antecedente técnico, sin numeración de hito. El Hito 004 de atributos no se inicia en esta entrega.
+Ver [arquitectura, flujo, incidencias y pruebas del Hito 003](Docs/Milestones/003-npc-selection-interaction.md). La [separación C++ previa](Docs/Milestones/003-cpp-architecture.md) se mantiene como antecedente técnico, sin numeración de hito. El [Hito 004](Docs/Milestones/004-modular-attributes-resources.md) incorpora un componente compartido de vida, recursos y atributos para jugador, NPC y enemigos. Su informe distingue las pruebas Blueprint comunicadas de las verificaciones de cierre.
+
+## Hito 004 — Atributos y recursos
+
+UKrerusAttributeComponent concentra vida y muerte, recursos None/Mana/Energy/Rage, atributos primarios y derivados, coeficientes configurables y modificadores identificados por GUID. Aguante cambia el máximo de vida sin curar ni resucitar. No hay combate, equipamiento real, regeneración ni replicación. Véanse [arquitectura, fórmulas y pruebas](Docs/Milestones/004-modular-attributes-resources.md) y el [texto para LinkedIn](Docs/Portfolio/004-linkedin.md).
 
 ## Portfolio y versión propuesta
 
