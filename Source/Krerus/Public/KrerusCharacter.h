@@ -8,6 +8,7 @@
 
 class UInputMappingContext;
 class UInputAction;
+class UKrerusAttributeComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -65,7 +66,7 @@ protected:
 	float CameraFollowSpeed = 3.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
-	float CameraFollowDelay = 0.25f;	
+	float CameraFollowDelay = 0.25f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Zoom")
 	float MinCameraDistance = 300.0f;
@@ -97,6 +98,9 @@ protected:
 	FRotator FreeMovementRotation = FRotator::ZeroRotator;
 	bool bWasMoving = false;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes")
+	TObjectPtr<UKrerusAttributeComponent> AttributeComponent;
+
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 	void StartSprint();
@@ -111,7 +115,7 @@ protected:
 	void ClearTarget();
 	void Interact();
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 

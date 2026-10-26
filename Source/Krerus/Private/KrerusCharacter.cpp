@@ -6,6 +6,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "KrerusAttributeComponent.h"
 
 // Sets default values
 AKrerusCharacter::AKrerusCharacter()
@@ -37,6 +38,7 @@ AKrerusCharacter::AKrerusCharacter()
 
 	CameraSystem = CreateDefaultSubobject<UKrerusCameraComponent>(TEXT("CameraSystem"));
 
+	AttributeComponent = CreateDefaultSubobject<UKrerusAttributeComponent>(TEXT("AttributeComponent"));
 }
 
 // Called when the game starts or when spawned

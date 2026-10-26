@@ -7,6 +7,8 @@
 #include "KrerusInteractable.h"
 #include "KrerusNPC.generated.h"
 
+class UKrerusAttributeComponent;
+
 UCLASS()
 class KRERUS_API AKrerusNPC : public ACharacter, public IKrerusInteractable
 {
@@ -22,6 +24,9 @@ protected:
 
 	UPROPERTY(EditAnywhere,BlueprintReadOnly, Category = "Interacion", meta = (ClampMin = "0.0"))
 	float InteractionDistance = 300.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes")
+	TObjectPtr<UKrerusAttributeComponent> AttributeComponent;
 
 public:	
 	// Called every frame
