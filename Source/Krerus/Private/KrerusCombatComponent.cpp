@@ -144,6 +144,7 @@ void UKrerusCombatComponent::StopAutoAttack()
 
 	bIsAutoAttacking = false;
 	bAttackImpactConsumed = true;
+	bAutoAttackPaused = false;
 
 	if (GetWorld())
 	{
@@ -376,6 +377,18 @@ void UKrerusCombatComponent::SetAutoAttackPaused(bool bPaused)
 	bAutoAttackPaused = bPaused;
 
 	UE_LOG(LogTemp,Log,TEXT("KRERUS COMBAT: Autoataque %s"),bAutoAttackPaused ? TEXT("PAUSADO") : TEXT("REANUDADO"));
+
+	if (!bAutoAttackPaused && bIsAutoAttacking)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(AutoAttackTimerHandle);
+
+		PerformAutoAttack();
+
+		if (bIsAutoAttacking)
+		{
+			GetWorld()->GetTimerManager().SetTimer(AutoAttackTimerHandle,this,&UKrerusCombatComponent::PerformAutoAttack,GetAttackInterval(),true);
+		}
+	}
 }
 
 bool UKrerusCombatComponent::IsAutoAttackPaused() const
