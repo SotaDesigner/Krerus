@@ -111,14 +111,15 @@ bool UKrerusCombatComponent::StartAutoAttack()
 		return false;
 	}
 
-	TargetAttributes->OnDeath.AddUniqueDynamic(this,&UKrerusCombatComponent::OnCombatTargetDeath);
-
 	if (!IsValid(CombatTarget.Get()) || CombatTarget->IsCorpse())
 	{
 		UE_LOG(LogTemp,Warning,TEXT("KRERUS COMBAT: No se puede atacar. Objetivo invalido o muerto."));
 
 		return false;
 	}
+
+	// Nos suscribimos solo cuando el objetivo ya ha superado las validaciones.
+	TargetAttributes->OnDeath.AddUniqueDynamic(this,&UKrerusCombatComponent::OnCombatTargetDeath);
 
 	bIsAutoAttacking = true;
 
