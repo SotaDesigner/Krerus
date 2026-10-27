@@ -9,8 +9,8 @@ Proyecto personal de portfolio desarrollado en **Unreal Engine 5.8** con C++ y E
 | [001 — Movimiento y locomoción](Docs/Milestones/001-character-movement.md) | WASD, dos marcos de movimiento, sprint y Blend Space Idle/Walk/Run | Completado en el alcance comunicado; salto pendiente |
 | [002 — Cámara MMORPG](Docs/Milestones/002-mmorpg-camera.md) | Cursor libre, órbita, control relativo, zoom y Spring Arm | Completado según validación del autor; revisión estática realizada |
 | [003 — Selección e interacción con NPC y enemigos](Docs/Milestones/003-npc-selection-interaction.md) | Clic/arrastre, objetivo único, Escape, aro y F con alcance horizontal por NPC | Implementado en fuentes y con logs previos; aceptación actual en editor pendiente |
-
 | [004 — Sistema modular de atributos y recursos](Docs/Milestones/004-modular-attributes-resources.md) | Vida, recursos, primarios, modificadores independientes y derivados | Implementado y probado por el autor; compilación de cierre bloqueada por DLL en uso |
+| [005 — Autoataque y ciclo de vida](Docs/Milestones/005-autoattack-lifecycle.md) | Temporizador, animación, daño, pausa y limpieza por muerte/EndPlay | Validado en PIE según el autor; revisión de fuentes y build incremental de editor satisfactorias |
 
 **El salto NO está completado: falta su animación.** Los enlaces existentes a `Jump`/`StopJumping` no constituyen una entrega terminada.
 
@@ -39,7 +39,7 @@ La locomoción utiliza `AB_KrerusCharacter` y `BS_WalkRun` para Idle/Walk/Run. L
 1. Instalar Unreal Engine 5.8 y las herramientas C++ compatibles con esa instalación.
 2. Clonar con Git LFS instalado y ejecutar `git lfs pull`.
 3. Generar los archivos desde `Krerus.uproject` y compilar `KrerusEditor` en Development Editor para Windows.
-4. Abrir `/Game/Dev/Maps/L_DevSandbox`, ejecutar Play y seguir las listas de comprobación de los hitos 001, 002, 003 y 004. Verificar también GameMode, PlayerController y acciones efectivas del mapa.
+4. Abrir `/Game/Dev/Maps/L_DevSandbox`, ejecutar Play y seguir las listas de comprobación de los hitos 001, 002, 003, 004 y 005. Verificar también GameMode, PlayerController y acciones efectivas del mapa.
 
 ## Estructura
 
@@ -72,10 +72,14 @@ Ver [arquitectura, flujo, incidencias y pruebas del Hito 003](Docs/Milestones/00
 
 ## Hito 004 — Atributos y recursos
 
-UKrerusAttributeComponent concentra vida y muerte, recursos None/Mana/Energy/Rage, atributos primarios y derivados, coeficientes configurables y modificadores identificados por GUID. Aguante cambia el máximo de vida sin curar ni resucitar. No hay combate, equipamiento real, regeneración ni replicación. Véanse [arquitectura, fórmulas y pruebas](Docs/Milestones/004-modular-attributes-resources.md) y el [texto para LinkedIn](Docs/Portfolio/004-linkedin.md).
+UKrerusAttributeComponent concentra vida y muerte, recursos None/Mana/Energy/Rage, atributos primarios y derivados, coeficientes configurables y modificadores identificados por GUID. Aguante cambia el máximo de vida sin curar ni resucitar. En el alcance histórico de 004 no había combate, equipamiento real, regeneración ni replicación; 005 incorpora el autoataque. Véanse [arquitectura, fórmulas y pruebas](Docs/Milestones/004-modular-attributes-resources.md) y el [texto para LinkedIn](Docs/Portfolio/004-linkedin.md).
+
+## Hito 005 — Autoataque
+
+El componente de combate coordina temporizador, Montage e impacto sobre atributos. Gestiona pausa/reanudación, cambio de objetivo y limpieza por muerte y EndPlay. Véanse [arquitectura, evidencia y límites](Docs/Milestones/005-autoattack-lifecycle.md) y el [borrador LinkedIn](Docs/Portfolio/005-linkedin.md). La validación PIE corresponde al autor; este cierre comprueba fuentes y build incremental, sin repetir Play.
 
 ## Portfolio y versión propuesta
 
 La propuesta histórica de 002 fue **v0.2.0**; esta revisión no verifica etiquetas actuales ni propone una nueva para 003. El [Hito 002](Docs/Milestones/002-mmorpg-camera.md) recoge la revisión Git, las limitaciones y la propuesta de commits. `.gitignore` excluye las salidas habituales de Unreal e IDE; `.gitattributes` configura LFS para `.uasset` y `.umap`.
 
-Este repositorio presenta una base de control y locomoción. No acredita sistemas de red/MMO, combate ni un juego completo. Antes de publicar una demo, completar las pruebas y comprobar los permisos de distribución de modelos, animaciones y referencias. La revisión previa dejó registrada una incidencia con un token de Android File Server en el historial; consultar el Hito 001 antes de publicar.
+Este repositorio presenta una base de control y locomoción. Incluye una base local de autoataque; no acredita sistemas de red/MMO ni un juego completo. Antes de publicar una demo, completar las pruebas y comprobar los permisos de distribución de modelos, animaciones y referencias. La revisión previa dejó registrada una incidencia con un token de Android File Server en el historial; consultar el Hito 001 antes de publicar.
