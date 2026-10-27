@@ -50,6 +50,14 @@ AKrerusCharacter::AKrerusCharacter()
 // Called when the game starts or when spawned
 void AKrerusCharacter::BeginPlay()
 {
+	// Un Blueprint guardado tras Hot Reload puede conservar nula esta referencia.
+	// Recuperamos el subobjeto existente antes del BeginPlay del Blueprint.
+	if (!IsValid(CombatComponent))
+	{
+		CombatComponent = FindComponentByClass<UKrerusCombatComponent>();
+		UE_LOG(LogTemp, Warning, TEXT("KRERUS COMBAT: Referencia de combate recuperada: %s"), *GetNameSafe(CombatComponent.Get()));
+	}
+
 	Super::BeginPlay();
 
 	CameraSystem->InitializeCamera(CameraBoom);

@@ -252,6 +252,21 @@ void UKrerusCombatComponent::OnOwnerDeath()
 
 void UKrerusCombatComponent::PerformAutoAttack()
 {
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("KRERUS DEBUG: AutoAttack=%s | Paused=%s | Target=%s"),
+		bIsAutoAttacking ? TEXT("TRUE") : TEXT("FALSE"),
+		bAutoAttackPaused ? TEXT("TRUE") : TEXT("FALSE"),
+		IsValid(CombatTarget.Get()) ? *CombatTarget->GetName() : TEXT("NONE")
+	);
+
+	if (bAutoAttackPaused)
+	{
+		return;
+	}
+
     AActor* Owner = GetOwner();
     AKrerusEnemy* Target = CombatTarget.Get();
 
@@ -348,4 +363,22 @@ void UKrerusCombatComponent::CancelPendingAutoAttackImpact()
 	bAttackImpactConsumed = true;
 
 	UE_LOG(LogTemp,Warning,TEXT("KRERUS COMBAT: Impacto pendiente cancelado."));
+}
+
+void UKrerusCombatComponent::SetAutoAttackPaused(bool bPaused)
+{
+	// Evitar procesar dos veces el mismo estado.
+	if (bAutoAttackPaused == bPaused)
+	{
+		return;
+	}
+
+	bAutoAttackPaused = bPaused;
+
+	UE_LOG(LogTemp,Log,TEXT("KRERUS COMBAT: Autoataque %s"),bAutoAttackPaused ? TEXT("PAUSADO") : TEXT("REANUDADO"));
+}
+
+bool UKrerusCombatComponent::IsAutoAttackPaused() const
+{
+	return bAutoAttackPaused;
 }

@@ -207,10 +207,17 @@ void AKrerusPlayerController::ToggleAutoAttack()
 	}
 
 	Combat->SetCombatTarget(Enemy);
-	Combat->StartAutoAttack();
+	const bool bStarted = Combat->StartAutoAttack();
 
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1,3.0f,FColor::Green,TEXT("KRERUS: Autoataque ACTIVADO"));
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			5.0f,
+			bStarted ? FColor::Green : FColor::Red,
+			bStarted
+			? TEXT("KRERUS: Autoataque INICIADO correctamente")
+			: TEXT("KRERUS: ERROR al iniciar autoataque")
+		);
 	}
 }

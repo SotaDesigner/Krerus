@@ -43,6 +43,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void ApplyAutoAttackImpact();
 
+	UFUNCTION(BlueprintPure, Category = "Combat|AutoAttack")
+	bool IsAutoAttackPaused() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Combat|AutoAttack")
+	void SetAutoAttackPaused(bool bPaused);
+
 	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
 	FOnAutoAttackHit OnAutoAttackHit;
 
@@ -79,6 +85,7 @@ protected:
 	float AttackPowerCoefficient = 0.5f;
 
 	bool bAttackImpactConsumed = true;
+	bool bAutoAttackPaused = false;
 
 	UFUNCTION()
 	void OnCombatTargetDeath();
