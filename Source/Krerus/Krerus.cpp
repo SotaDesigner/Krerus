@@ -3,4 +3,4 @@
 #include "Krerus.h"
 #include "Modules/ModuleManager.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, Krerus, "Krerus" );
+IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModuleImpl, Krerus, "Krerus");

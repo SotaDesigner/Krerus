@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -8,97 +6,102 @@
 
 class AKrerusCharacter;
 class AKrerusEnemy;
+class UGameplayEffect;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAutoAttackHit,AActor*, Target,float, Damage);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAutoAttackHit, AActor*, Target, float, Damage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAutoAttackStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAutoAttackStopped);
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+/**
+ * Orquesta el autoataque del Character con temporizador, montaje e impacto.
+ * Consulta y modifica UKrerusAttributeComponent; este circuito no aplica Gameplay Effects de GAS.
+ */
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class KRERUS_API UKrerusCombatComponent : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
-public:	
-	// Sets default values for this component's properties
-	UKrerusCombatComponent();
+public:
+    UKrerusCombatComponent();
 
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void SetCombatTarget(AKrerusEnemy* NewTarget);
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void SetCombatTarget(AKrerusEnemy* NewTarget);
 
-	UFUNCTION(BlueprintPure, Category = "Combat")
-	AKrerusEnemy* GetCombatTarget() const;
+    UFUNCTION(BlueprintPure, Category = "Combat")
+    AKrerusEnemy* GetCombatTarget() const;
 
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	bool StartAutoAttack();
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    bool StartAutoAttack();
 
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void StopAutoAttack();
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void StopAutoAttack();
 
-	UFUNCTION(BlueprintPure, Category = "Combat")
-	bool IsAutoAttacking() const;
+    UFUNCTION(BlueprintPure, Category = "Combat")
+    bool IsAutoAttacking() const;
 
-	UFUNCTION(BlueprintPure, Category = "Combat")
-	float GetAttackInterval() const;
+    UFUNCTION(BlueprintPure, Category = "Combat")
+    float GetAttackInterval() const;
 
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void ApplyAutoAttackImpact();
+    UFUNCTION(BlueprintCallable, Category = "Combat")
+    void ApplyAutoAttackImpact();
 
-	UFUNCTION(BlueprintPure, Category = "Combat|AutoAttack")
-	bool IsAutoAttackPaused() const;
+    UFUNCTION(BlueprintPure, Category = "Combat|AutoAttack")
+    bool IsAutoAttackPaused() const;
 
-	UFUNCTION(BlueprintCallable, Category = "Combat|AutoAttack")
-	void SetAutoAttackPaused(bool bPaused);
+    UFUNCTION(BlueprintCallable, Category = "Combat|AutoAttack")
+    void SetAutoAttackPaused(bool bPaused);
 
-	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
-	FOnAutoAttackHit OnAutoAttackHit;
+    UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
+    FOnAutoAttackHit OnAutoAttackHit;
 
-	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
-	FOnAutoAttackStarted OnAutoAttackStarted;
+    UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
+    FOnAutoAttackStarted OnAutoAttackStarted;
 
-	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
-	FOnAutoAttackStopped OnAutoAttackStopped;
+    UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
+    FOnAutoAttackStopped OnAutoAttackStopped;
 
-	void CancelPendingAutoAttackImpact();
+    void CancelPendingAutoAttackImpact();
 
 protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	float AttackRange = 200.0f;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+    float AttackRange = 200.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	float AttackInterval = 2.0f;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+    float AttackInterval = 2.0f;
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
-	TObjectPtr<AKrerusEnemy> CombatTarget = nullptr;	
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
+    TObjectPtr<AKrerusEnemy> CombatTarget = nullptr;
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
-	bool bIsAutoAttacking = false;
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
+    bool bIsAutoAttacking = false;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Damage", meta = (ClampMin = "0.0"))
-	float BaseAttackDamage = 10.0f;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Damage", meta = (ClampMin = "0.0"))
+    float BaseAttackDamage = 10.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Damage", meta = (ClampMin = "0.0"))
-	float AttackPowerCoefficient = 0.5f;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Damage", meta = (ClampMin = "0.0"))
+    float AttackPowerCoefficient = 0.5f;
 
-	bool bAttackImpactConsumed = true;
-	bool bAutoAttackPaused = false;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|GAS")
+    TSubclassOf<UGameplayEffect> AutoAttackDamageEffectClass;
 
-	UFUNCTION()
-	void OnCombatTargetDeath();
+    bool bAttackImpactConsumed = true;
+    bool bAutoAttackPaused = false;
 
-	UFUNCTION()
-	void OnOwnerDeath();
+    UFUNCTION()
+    void OnCombatTargetDeath();
 
-	FTimerHandle AutoAttackTimerHandle;
+    UFUNCTION()
+    void OnOwnerDeath();
 
-	void PerformAutoAttack();
+    FTimerHandle AutoAttackTimerHandle;
+
+    void PerformAutoAttack();
 
 private:
-	bool IsTargetInRange(const AKrerusCharacter* PlayerCharacter,const AKrerusEnemy* Target) const;
-	bool IsTargetInFront(const AKrerusCharacter* PlayerCharacter,const AKrerusEnemy* Target) const;
-
+    bool IsTargetInRange(const AKrerusCharacter* PlayerCharacter, const AKrerusEnemy* Target) const;
+    bool IsTargetInFront(const AKrerusCharacter* PlayerCharacter, const AKrerusEnemy* Target) const;
 };

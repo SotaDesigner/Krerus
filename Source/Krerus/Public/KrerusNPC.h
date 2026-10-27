@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -9,38 +7,44 @@
 
 class UKrerusAttributeComponent;
 
+/**
+ * Base seleccionable e interactuable de los NPC y enemigos.
+ * Posee los atributos tradicionales y delega la representación del anillo de selección en Blueprint.
+ */
 UCLASS()
 class KRERUS_API AKrerusNPC : public ACharacter, public IKrerusInteractable
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
-	AKrerusNPC();
+    AKrerusNPC();
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-	UPROPERTY(EditAnywhere,BlueprintReadOnly, Category = "Interacion", meta = (ClampMin = "0.0"))
-	float InteractionDistance = 300.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interacion", meta = (ClampMin = "0.0"))
+    float InteractionDistance = 300.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes")
-	TObjectPtr<UKrerusAttributeComponent> AttributeComponent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes")
+    TObjectPtr<UKrerusAttributeComponent> AttributeComponent;
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+public:
+    virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	virtual void Interact_Implementation(AActor* Interactor) override;
+    virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+    virtual void Interact_Implementation(AActor* Interactor) override;
 
-	UFUNCTION(BlueprintImplementableEvent, Category = "Targeting")
-	void SetSelectionRingVisible(bool bVisible);
+    UFUNCTION(BlueprintImplementableEvent, Category = "Targeting")
+    void SetSelectionRingVisible(bool bVisible);
 
-	UFUNCTION(BlueprintPure, Category = "Attributes")
-	UKrerusAttributeComponent* GetAttributeComponent() const { return AttributeComponent.Get(); }
+    UFUNCTION(BlueprintPure, Category = "Attributes")
+    UKrerusAttributeComponent* GetAttributeComponent() const
+    {
+        return AttributeComponent.Get();
+    }
 
-	float GetInteractionDistance() const { return InteractionDistance; }
+    float GetInteractionDistance() const
+    {
+        return InteractionDistance;
+    }
 };

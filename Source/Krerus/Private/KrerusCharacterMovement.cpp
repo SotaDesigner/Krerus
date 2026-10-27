@@ -3,73 +3,74 @@
 #include "GameFramework/Controller.h"
 #include "InputActionValue.h"
 
+// El control de cámara orienta el movimiento; en modo libre se conserva la orientación inicial del personaje.
 void AKrerusCharacter::Move(const FInputActionValue& Value)
 {
-	const FVector2D MovementVector = Value.Get<FVector2D>();
+    const FVector2D MovementVector = Value.Get<FVector2D>();
 
-	if (!Controller)
-	{
-		return;
-	}
+    if (!Controller)
+    {
+        return;
+    }
 
-	FRotator MovementRotation;
+    FRotator MovementRotation;
 
-	if (bIsCameraControlActive)
-	{
-		// Movimiento relativo a la cámara
-		MovementRotation = Controller->GetControlRotation();
-	}
-	else
-	{
-		// Guardamos la orientación al empezar a movernos
-		if (!bWasMoving)
-		{
-			FreeMovementRotation = GetActorRotation();
-		}
+    if (bIsCameraControlActive)
+    {
+        // Movimiento relativo a la cámara
+        MovementRotation = Controller->GetControlRotation();
+    }
+    else
+    {
+        // Guardamos la orientación al empezar a movernos
+        if (!bWasMoving)
+        {
+            FreeMovementRotation = GetActorRotation();
+        }
 
-		MovementRotation = FreeMovementRotation;
-	}
+        MovementRotation = FreeMovementRotation;
+    }
 
-	const FRotator YawRotation(0.0f, MovementRotation.Yaw, 0.0f);
+    const FRotator YawRotation(0.0f, MovementRotation.Yaw, 0.0f);
 
-	const FVector ForwardDirection =
-		FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+    const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 
-	const FVector RightDirection =
-		FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+    const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-	AddMovementInput(ForwardDirection, MovementVector.Y);
-	AddMovementInput(RightDirection, MovementVector.X);
+    AddMovementInput(ForwardDirection, MovementVector.Y);
+    AddMovementInput(RightDirection, MovementVector.X);
 
-	bWasMoving = !MovementVector.IsNearlyZero();
+    bWasMoving = !MovementVector.IsNearlyZero();
 }
 
 void AKrerusCharacter::StartSprint()
 {
-	bIsDecelerating = false;
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed * 2.0f;
+    bIsDecelerating = false;
+    GetCharacterMovement()->MaxWalkSpeed = WalkSpeed * 2.0f;
 }
 
 void AKrerusCharacter::StopSprint()
 {
-	bIsDecelerating = true;
+    bIsDecelerating = true;
 }
 
 void AKrerusCharacter::StopMovementInput()
 {
-	bWasMoving = false;
+    bWasMoving = false;
 }
 
+// El Tick del Character interpola el retorno a WalkSpeed después de soltar sprint.
 void AKrerusCharacter::UpdateSprint(float DeltaTime)
 {
-	if (bIsDecelerating)
-	{
-		GetCharacterMovement()->MaxWalkSpeed = FMath::FInterpTo(GetCharacterMovement()->MaxWalkSpeed, WalkSpeed, DeltaTime, 5.0f);
+    if (bIsDecelerating)
+    {
+        GetCharacterMovement()->MaxWalkSpeed =
+            FMath::FInterpTo(GetCharacterMovement()->MaxWalkSpeed, WalkSpeed, DeltaTime, 5.0f);
 
-		if (FMath::IsNearlyEqual(GetCharacterMovement()->MaxWalkSpeed, WalkSpeed, 1.0f))
-		{
-			GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-			bIsDecelerating = false;
-		}
-	}
+        if (FMath::IsNearlyEqual(GetCharacterMovement()->MaxWalkSpeed, WalkSpeed, 1.0f))
+        {
+            GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+            bIsDecelerating = false;
+        }
+    }
 }

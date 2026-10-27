@@ -1,19 +1,25 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "KrerusEnemy.h"
 #include "KrerusAttributeComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "TimerManager.h"
 #include "KrerusPlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "AbilitySystemComponent.h"
+#include "KrerusAttributeSet.h"
 
-// Sets default values
 AKrerusEnemy::AKrerusEnemy()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = false;
 
+    bReplicates = true;
+
+    AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+
+    AbilitySystemComponent->SetIsReplicated(true);
+
+    AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full);
+
+    GASAttributeSet = CreateDefaultSubobject<UKrerusAttributeSet>(TEXT("GASAttributeSet"));
 }
 
 void AKrerusEnemy::OnEnemyHealthChanged(float CurrentHealth, float MaxHealth)
@@ -26,32 +32,33 @@ void AKrerusEnemy::OnEnemyHealthChanged(float CurrentHealth, float MaxHealth)
     PreviousHealth = CurrentHealth;
 }
 
-// Called when the game starts or when spawned
+// Suscribe reacciones y muerte a los atributos heredados del NPC; inicializa aparte el ASC propio del enemigo.
 void AKrerusEnemy::BeginPlay()
 {
-	Super::BeginPlay();
-	
+    Super::BeginPlay();
+
     if (IsValid(AttributeComponent))
     {
         PreviousHealth = AttributeComponent->GetCurrentHealth();
-        AttributeComponent->OnHealthChanged.AddUniqueDynamic(this,&AKrerusEnemy::OnEnemyHealthChanged);
+        AttributeComponent->OnHealthChanged.AddUniqueDynamic(this, &AKrerusEnemy::OnEnemyHealthChanged);
     }
 
-    AttributeComponent->OnDeath.AddUniqueDynamic(this,&AKrerusEnemy::OnEnemyDeath);
+    AttributeComponent->OnDeath.AddUniqueDynamic(this, &AKrerusEnemy::OnEnemyDeath);
+
+    if (AbilitySystemComponent)
+    {
+        AbilitySystemComponent->InitAbilityActorInfo(this, this);
+    }
 }
 
-// Called every frame
 void AKrerusEnemy::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
-
+    Super::Tick(DeltaTime);
 }
 
-// Called to bind functionality to input
 void AKrerusEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
 void AKrerusEnemy::PlayHitReaction()
@@ -88,6 +95,7 @@ void AKrerusEnemy::PlayHitReaction()
     AnimInstance->Montage_Play(HitReactionMontage);
 }
 
+// Evento de muerte tradicional: reproduce el montaje y programa el tiempo de permanencia del cadáver.
 void AKrerusEnemy::OnEnemyDeath()
 {
     if (!IsValid(DeathMontage))
@@ -111,16 +119,17 @@ void AKrerusEnemy::OnEnemyDeath()
 
     AnimInstance->Montage_Play(DeathMontage);
 
-    UE_LOG(LogTemp,Warning,TEXT("KRERUS COMBAT: Enemigo %s ha muerto"),*GetName());
+    UE_LOG(LogTemp, Warning, TEXT("KRERUS COMBAT: Enemigo %s ha muerto"), *GetName());
 
     if (UCapsuleComponent* Capsule = GetCapsuleComponent())
     {
-        Capsule->SetCollisionResponseToChannel(ECC_Pawn,ECR_Ignore);
+        Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
     }
 
-    GetWorldTimerManager().SetTimer(CorpseTimerHandle,this,&AKrerusEnemy::OnCorpseTimeExpired,CorpseDuration,false);
+    GetWorldTimerManager().SetTimer(CorpseTimerHandle, this, &AKrerusEnemy::OnCorpseTimeExpired, CorpseDuration, false);
 }
 
+// Consulta la vida tradicional, no Health de GAS: agotar solo GAS no convierte al enemigo en cadáver.
 bool AKrerusEnemy::IsCorpse() const
 {
     if (!IsValid(AttributeComponent))
@@ -131,12 +140,14 @@ bool AKrerusEnemy::IsCorpse() const
     return !AttributeComponent->IsAlive();
 }
 
+// Retira la selección del controlador local 0 y oculta el cadáver sin destruir el actor.
 void AKrerusEnemy::OnCorpseTimeExpired()
 {
-    UE_LOG(LogTemp,Warning,TEXT("KRERUS COMBAT: Ha terminado el tiempo del cadaver de %s"),*GetName());
+    UE_LOG(LogTemp, Warning, TEXT("KRERUS COMBAT: Ha terminado el tiempo del cadaver de %s"), *GetName());
 
     // Limpiar la selección si este enemigo está seleccionado.
-    if (AKrerusPlayerController* PlayerController = Cast<AKrerusPlayerController>(UGameplayStatics::GetPlayerController(this, 0)))
+    if (AKrerusPlayerController* PlayerController =
+            Cast<AKrerusPlayerController>(UGameplayStatics::GetPlayerController(this, 0)))
     {
         PlayerController->ClearSelectionIfTarget(this);
     }
@@ -146,4 +157,9 @@ void AKrerusEnemy::OnCorpseTimeExpired()
 
     // Desactivar todas sus colisiones.
     SetActorEnableCollision(false);
+}
+
+UAbilitySystemComponent* AKrerusEnemy::GetAbilitySystemComponent() const
+{
+    return AbilitySystemComponent;
 }

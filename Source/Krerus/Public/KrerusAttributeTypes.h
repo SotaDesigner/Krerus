@@ -3,13 +3,13 @@
 #include "CoreMinimal.h"
 #include "KrerusAttributeTypes.generated.h"
 
+// Atributos primarios del sistema tradicional, antes y después de aplicar modificadores.
 USTRUCT(BlueprintType)
 struct FKrerusPrimaryAttributes
 {
     GENERATED_BODY()
 
 public:
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes")
     float Strength = 10.0f;
 
@@ -23,6 +23,7 @@ public:
     float Stamina = 10.0f;
 };
 
+// Bonificaciones aditivas identificadas por GUID para retirarlas sin alterar otros modificadores.
 USTRUCT(BlueprintType)
 struct FKrerusAttributeModifier
 {
@@ -57,13 +58,13 @@ public:
     float CriticalChance = 0.0f;
 };
 
+// Estadísticas calculadas por AttributeComponent; el autoataque consulta AttackPower.
 USTRUCT(BlueprintType)
 struct FKrerusDerivedAttributes
 {
     GENERATED_BODY()
 
 public:
-
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes")
     float AttackPower = 0.0f;
 
@@ -77,13 +78,13 @@ public:
     float CriticalChance = 0.0f;
 };
 
+// Coeficientes editables usados por AttributeComponent al derivar estadísticas y vida máxima.
 USTRUCT(BlueprintType)
 struct FKrerusAttributeScaling
 {
     GENERATED_BODY()
 
 public:
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scaling")
     float StrengthToAttackPower = 1.0f;
 
