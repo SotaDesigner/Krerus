@@ -286,3 +286,15 @@ void AKrerusCharacter::ServerActivateStrike_Implementation(AKrerusEnemy* Target)
         }
     }
 }
+
+void AKrerusCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)
+{
+    if (bNewSprinting)
+    {
+        StartSprint();
+    }
+    else
+    {
+        StopSprint();
+    }
+}

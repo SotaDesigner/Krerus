@@ -143,6 +143,7 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|GAS")
     TObjectPtr<UInputAction> StrikeAction;
 
+
     UFUNCTION()
     void OnAutoAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
@@ -151,6 +152,10 @@ protected:
     void StartSprint();
     void StopSprint();
     void UpdateSprint(float DeltaTime);
+    
+    UFUNCTION(Server, Reliable)
+    void ServerSetSprinting(bool bNewSprinting);
+    
     void StartCameraControl();
     void StopCameraControl();
     void StopMovementInput();

@@ -47,11 +47,19 @@ void AKrerusCharacter::StartSprint()
 {
     bIsDecelerating = false;
     GetCharacterMovement()->MaxWalkSpeed = WalkSpeed * 2.0f;
+    if (IsLocallyControlled() && !HasAuthority())
+    {
+        ServerSetSprinting(true);
+    }
 }
 
 void AKrerusCharacter::StopSprint()
 {
     bIsDecelerating = true;
+    if (IsLocallyControlled() && !HasAuthority())
+    {
+        ServerSetSprinting(false);
+    }
 }
 
 void AKrerusCharacter::StopMovementInput()
@@ -64,8 +72,7 @@ void AKrerusCharacter::UpdateSprint(float DeltaTime)
 {
     if (bIsDecelerating)
     {
-        GetCharacterMovement()->MaxWalkSpeed =
-            FMath::FInterpTo(GetCharacterMovement()->MaxWalkSpeed, WalkSpeed, DeltaTime, 5.0f);
+        GetCharacterMovement()->MaxWalkSpeed = FMath::FInterpTo(GetCharacterMovement()->MaxWalkSpeed, WalkSpeed, DeltaTime, 5.0f);
 
         if (FMath::IsNearlyEqual(GetCharacterMovement()->MaxWalkSpeed, WalkSpeed, 1.0f))
         {
