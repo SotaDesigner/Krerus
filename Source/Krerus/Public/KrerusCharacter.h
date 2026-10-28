@@ -5,6 +5,7 @@
 #include "AbilitySystemInterface.h"
 #include "KrerusCharacter.generated.h"
 
+class AKrerusEnemy;
 class UInputMappingContext;
 class UInputAction;
 class UKrerusAttributeComponent;
@@ -24,6 +25,26 @@ class KRERUS_API AKrerusCharacter : public ACharacter, public IAbilitySystemInte
 
 public:
     AKrerusCharacter();
+
+    // RPC sobre el Pawn poseído: el cliente transmite intención y objetivo, nunca daño.
+    UFUNCTION(Server, Reliable)
+    void ServerStartAutoAttack(AKrerusEnemy* Target);
+    UFUNCTION(Server, Reliable)
+    void ServerStopAutoAttack();
+    UFUNCTION(Server, Reliable)
+    void ServerSetAutoAttackPaused(bool bPaused);
+    UFUNCTION(Server, Reliable)
+    void ServerActivateStrike(AKrerusEnemy* Target);
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastAutoAttackMontage(bool bPlay, float Interval);
+
+    AKrerusEnemy* GetStrikeTarget() const { return StrikeTarget.Get(); }
+
+private:
+    // Solo existe durante la activación síncrona de Strike en el servidor.
+    UPROPERTY(Transient)
+    TObjectPtr<AKrerusEnemy> StrikeTarget;
+public:
     virtual void PawnClientRestart() override;
 
     virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;

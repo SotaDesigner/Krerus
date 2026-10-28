@@ -1,9 +1,11 @@
+
 #include "KrerusStrikeAbility.h"
 
 #include "KrerusCharacter.h"
 #include "KrerusPlayerController.h"
 #include "KrerusEnemy.h"
 #include "KrerusAttributeSet.h"
+#include "KrerusAttributeComponent.h"
 
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
@@ -15,10 +17,12 @@ UKrerusStrikeAbility::UKrerusStrikeAbility()
     NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 }
 
-// Valida Avatar, controlador, enemigo seleccionado y distancia 3D antes de confirmar coste/enfriamiento.
-// El daño proviene de DamageEffectClass y se aplica al ASC del enemigo; termina la habilidad en cada salida.
-void UKrerusStrikeAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
-    const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
+// Valida Avatar, controlador, objetivo, vida GAS y distancia antes de consumir recursos.
+// El daño se aplica al ASC del enemigo mediante DamageEffectClass.
+void UKrerusStrikeAbility::ActivateAbility(
+    const FGameplayAbilitySpecHandle Handle,
+    const FGameplayAbilityActorInfo* ActorInfo,
+    const FGameplayAbilityActivationInfo ActivationInfo,
     const FGameplayEventData* TriggerEventData)
 {
     if (!ActorInfo || !ActorInfo->AvatarActor.IsValid() || !DamageEffectClass)
@@ -29,7 +33,7 @@ void UKrerusStrikeAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 
     AKrerusCharacter* Character = Cast<AKrerusCharacter>(ActorInfo->AvatarActor.Get());
 
-    if (!IsValid(Character))
+    if (!IsValid(Character) || !Character->HasAuthority())
     {
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
@@ -43,48 +47,92 @@ void UKrerusStrikeAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
         return;
     }
 
-    AKrerusEnemy* Target = Cast<AKrerusEnemy>(PC->GetSelectedNPC());
+    // Objetivo explícito recibido por el RPC del Character, nunca selección local del servidor.
+    AKrerusEnemy* Target = Character->GetStrikeTarget();
 
-    if (!IsValid(Target) || !IsValid(Target->GetAbilitySystemComponent()))
+    if (!IsValid(Target))
     {
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
 
-    const float Distance = FVector::Dist(Character->GetActorLocation(), Target->GetActorLocation());
+    if (!Character->GetAttributeComponent() || !Character->GetAttributeComponent()->IsAlive() ||
+        Target->GetWorld() != Character->GetWorld())
+    {
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
+    // Obtenemos el ASC del enemigo para consultar su vida real.
+    UAbilitySystemComponent* TargetASC = Target->GetAbilitySystemComponent();
 
-    if (Distance > AbilityRange)
+    if (!IsValid(TargetASC))
     {
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
 
-    // El coste se aplica una sola vez.
+    const UKrerusAttributeSet* TargetAttributes =
+        TargetASC->GetSet<UKrerusAttributeSet>();
+
+    // Un enemigo sin vida GAS no puede recibir Strike ni provocar gasto de mana.
+    if (!IsValid(TargetAttributes) || TargetAttributes->GetHealth() <= 0.0f)
+    {
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("KRERUS GAS: Strike cancelado. Objetivo sin vida.")
+        );
+
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
+
+    const float Distance = FVector::Dist(
+        Character->GetActorLocation(),
+        Target->GetActorLocation()
+    );
+
+    if (!FMath::IsFinite(Distance) || Distance > AbilityRange || Target->IsCorpse())
+    {
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
+
+    // Solo consumimos recursos cuando el objetivo es valido, esta vivo y en alcance.
     if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
     {
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
 
-    FGameplayEffectSpecHandle DamageSpec = MakeOutgoingGameplayEffectSpec(DamageEffectClass, 1.0f);
+    FGameplayEffectSpecHandle DamageSpec =
+        MakeOutgoingGameplayEffectSpec(DamageEffectClass, 1.0f);
 
     if (DamageSpec.IsValid())
     {
-        Target->GetAbilitySystemComponent()->ApplyGameplayEffectSpecToSelf(*DamageSpec.Data.Get());
+        TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpec.Data.Get());
 
-        UE_LOG(LogTemp, Display, TEXT("KRERUS GAS: Strike aplicado a %s"), *GetNameSafe(Target));
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("KRERUS GAS: Strike aplicado a %s"),
+            *GetNameSafe(Target)
+        );
 
-        const UKrerusAttributeSet* TargetAttributes =
-            Target->GetAbilitySystemComponent()->GetSet<UKrerusAttributeSet>();
+        const UKrerusAttributeSet* PlayerAttributes =
+            ActorInfo->AbilitySystemComponent->GetSet<UKrerusAttributeSet>();
 
-        const UKrerusAttributeSet* PlayerAttributes = ActorInfo->AbilitySystemComponent->GetSet<UKrerusAttributeSet>();
-
-        if (TargetAttributes && PlayerAttributes)
+        if (PlayerAttributes)
         {
-            UE_LOG(LogTemp, Warning,
+            UE_LOG(
+                LogTemp,
+                Warning,
                 TEXT("KRERUS GAS: RESULTADO | Enemigo HP: %.1f / %.1f | Jugador Mana: %.1f / %.1f"),
-                TargetAttributes->GetHealth(), TargetAttributes->GetMaxHealth(), PlayerAttributes->GetMana(),
-                PlayerAttributes->GetMaxMana());
+                TargetAttributes->GetHealth(),
+                TargetAttributes->GetMaxHealth(),
+                PlayerAttributes->GetMana(),
+                PlayerAttributes->GetMaxMana()
+            );
         }
     }
 

@@ -214,6 +214,6 @@ void AKrerusPlayerController::ToggleAutoAttack()
     if (GEngine)
     {
         GEngine->AddOnScreenDebugMessage(-1, 5.0f, bStarted ? FColor::Green : FColor::Red,
-            bStarted ? TEXT("KRERUS: Autoataque INICIADO correctamente") : TEXT("KRERUS: ERROR al iniciar autoataque"));
+            bStarted ? TEXT("KRERUS: Solicitud de autoataque enviada") : TEXT("KRERUS: ERROR al iniciar autoataque"));
     }
 }

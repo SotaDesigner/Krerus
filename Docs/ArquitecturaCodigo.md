@@ -101,16 +101,9 @@ La selección del controlador se consulta en el contexto donde corre la habilida
 
 No se ha añadido sincronización, sustituido el daño ni migrado la muerte a GAS en esta revisión. Esa convivencia se conserva expresamente.
 
-## Laboratorio GAS separado
+## Laboratorio GAS retirado
 
-| Clase | Función y diferencias con el circuito jugable |
-| --- | --- |
-| `AKrerusGASLabCharacter` | Posee ASC y `UKrerusGASLabAttributeSet` en el propio personaje, inicializa Owner y Avatar a sí mismo, concede `StartupAbilityClass` con autoridad y enlaza la tecla `One` a la prueba. |
-| `AKrerusGASLabTarget` | Actor con SceneRoot, ASC y atributos del laboratorio; se inicializa como Owner y Avatar de su ASC. |
-| `UKrerusGASLabStrike` | Comprueba autoridad y confirma la habilidad; localiza un objetivo con `GetActorOfClass`, aplica el efecto y registra vida/maná. No emplea PlayerController ni la selección del juego. |
-| `UKrerusGASLabAttributeSet` | Vida y maná replicados del laboratorio, separados de `UKrerusAttributeSet` del circuito jugable. |
-
-Las lecturas finales de `UKrerusGASLabStrike` presuponen un objetivo y ASC disponibles, aunque la aplicación previa del efecto tenga una comprobación. Se documenta esta dependencia existente sin cambiar las validaciones ni corregir lógica.
+El laboratorio fue retirado el 28 de octubre de 2026 tras comprobar dependencias de código, assets y mapas. Véase [LimpiezaGASLab.md](LimpiezaGASLab.md) para el punto de seguridad, los cambios y las validaciones. Las secciones de combate anteriores documentan la revisión de formato original y no sustituyen el informe de la integración posterior de autoataques en GAS.
 
 ## Alcance de la revisión
 

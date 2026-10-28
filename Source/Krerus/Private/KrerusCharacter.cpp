@@ -10,11 +10,14 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "KrerusPlayerState.h"
 #include "AbilitySystemComponent.h"
+#include "KrerusEnemy.h"
+#include "KrerusStrikeAbility.h"
 
 AKrerusCharacter::AKrerusCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
 
+    bReplicates = true;
     bUseControllerRotationPitch = false;
     bUseControllerRotationYaw = false;
     bUseControllerRotationRoll = false;
@@ -57,6 +60,12 @@ void AKrerusCharacter::BeginPlay()
 
     Super::BeginPlay();
 
+    // Los notifies autoritativos deben avanzar aunque el servidor no renderice la malla.
+    if (HasAuthority())
+    {
+        GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+        GetMesh()->bEnableUpdateRateOptimizations = false;
+    }
     CameraSystem->InitializeCamera(CameraBoom);
 }
 
@@ -217,4 +226,63 @@ void AKrerusCharacter::InitializeAbilitySystem()
 
     UE_LOG(LogTemp, Display, TEXT("KRERUS GAS: Inicializado | Owner: %s | Avatar: %s"),
         *GetNameSafe(ASC->GetOwnerActor()), *GetNameSafe(ASC->GetAvatarActor()));
+}
+void AKrerusCharacter::ServerStartAutoAttack_Implementation(AKrerusEnemy* Target)
+{
+    if (!HasAuthority()) return;
+    if (!GetController() || !IsValid(Target) || Target->GetWorld() != GetWorld() || Target->IsCorpse()) return;
+    if (UKrerusCombatComponent* Combat = GetCombatComponent())
+    {
+        Combat->SetCombatTarget(Target);
+        Combat->StartAutoAttack();
+    }
+}
+
+void AKrerusCharacter::ServerStopAutoAttack_Implementation()
+{
+    if (!HasAuthority()) return;
+    if (UKrerusCombatComponent* Combat = GetCombatComponent()) Combat->StopAutoAttack();
+}
+
+void AKrerusCharacter::ServerSetAutoAttackPaused_Implementation(bool bPaused)
+{
+    if (!HasAuthority()) return;
+    if (UKrerusCombatComponent* Combat = GetCombatComponent()) Combat->SetAutoAttackPaused(bPaused);
+}
+
+void AKrerusCharacter::MulticastAutoAttackMontage_Implementation(bool bPlay, float Interval)
+{
+    if (bPlay)
+    {
+        PlayAutoAttackMontage(Interval);
+    }
+    else if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+    {
+        if (AutoAttackMontage) Anim->Montage_Stop(0.1f, AutoAttackMontage);
+    }
+}
+
+void AKrerusCharacter::ServerActivateStrike_Implementation(AKrerusEnemy* Target)
+{
+    if (!HasAuthority()) return;
+    if (!GetController() || !IsValid(Target) || Target->GetWorld() != GetWorld() || Target->IsCorpse()) return;
+    if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+    {
+        // El servidor usa una habilidad concedida; la clase/daño no proceden del cliente.
+        FGameplayAbilitySpecHandle StrikeHandle;
+        for (const FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+        {
+            if (Spec.Ability && Spec.Ability->IsA(UKrerusStrikeAbility::StaticClass()))
+            {
+                StrikeHandle = Spec.Handle;
+                break;
+            }
+        }
+        if (StrikeHandle.IsValid())
+        {
+            StrikeTarget = Target;
+            ASC->TryActivateAbility(StrikeHandle);
+            StrikeTarget = nullptr;
+        }
+    }
 }

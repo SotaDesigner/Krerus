@@ -14,7 +14,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAutoAttackStopped);
 
 /**
  * Orquesta el autoataque del Character con temporizador, montaje e impacto.
- * Consulta y modifica UKrerusAttributeComponent; este circuito no aplica Gameplay Effects de GAS.
+ * Cadencia e impacto en servidor; daño GAS y estado replicado al propietario.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class KRERUS_API UKrerusCombatComponent : public UActorComponent
@@ -64,6 +64,9 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    UFUNCTION()
+    void OnRep_AutoAttacking();
 
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
@@ -73,10 +76,10 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
     float AttackInterval = 2.0f;
 
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
+    UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
     TObjectPtr<AKrerusEnemy> CombatTarget = nullptr;
 
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
+    UPROPERTY(ReplicatedUsing = OnRep_AutoAttacking, VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
     bool bIsAutoAttacking = false;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Damage", meta = (ClampMin = "0.0"))
@@ -88,7 +91,9 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|GAS")
     TSubclassOf<UGameplayEffect> AutoAttackDamageEffectClass;
 
+    double NextAttackTime = 0.0; // No se reinicia al cancelar: pausa/cambio de objetivo no eluden cadencia.
     bool bAttackImpactConsumed = true;
+    UPROPERTY(Replicated)
     bool bAutoAttackPaused = false;
 
     UFUNCTION()

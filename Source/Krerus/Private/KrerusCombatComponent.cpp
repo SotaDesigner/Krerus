@@ -7,10 +7,12 @@
 #include "GameplayEffect.h"
 #include "GameplayTagContainer.h"
 #include "KrerusAttributeSet.h"
+#include "Net/UnrealNetwork.h"
 
 UKrerusCombatComponent::UKrerusCombatComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
+    SetIsReplicatedByDefault(true);
 }
 
 void UKrerusCombatComponent::BeginPlay()
@@ -51,6 +53,13 @@ void UKrerusCombatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UKrerusCombatComponent::SetCombatTarget(AKrerusEnemy* NewTarget)
 {
+    if (!GetOwner()->HasAuthority())
+    {
+        // Selección local; el objetivo explícito se enviará al iniciar.
+        if (CombatTarget.Get() != NewTarget) StopAutoAttack();
+        CombatTarget = NewTarget;
+        return;
+    }
     // Si es el mismo objetivo, no hacemos nada.
     if (CombatTarget.Get() == NewTarget)
     {
@@ -69,9 +78,19 @@ AKrerusEnemy* UKrerusCombatComponent::GetCombatTarget() const
     return CombatTarget.Get();
 }
 
-// Valida la vida tradicional de ambos actores, escucha la muerte del objetivo y programa la cadencia.
+// El servidor valida al atacante y la vida GAS del objetivo y programa la cadencia.
 bool UKrerusCombatComponent::StartAutoAttack()
 {
+    if (!GetOwner()->HasAuthority())
+    {
+        if (AKrerusCharacter* Character = Cast<AKrerusCharacter>(GetOwner()))
+        {
+            if (!IsValid(CombatTarget.Get()) || CombatTarget->IsCorpse()) return false;
+            Character->ServerStartAutoAttack(CombatTarget.Get());
+            return true; // Solicitud enviada; OnRep confirma el estado, no predice el montaje.
+        }
+        return false;
+    }
     if (!IsValid(CombatTarget.Get()))
     {
         return false;
@@ -98,12 +117,6 @@ bool UKrerusCombatComponent::StartAutoAttack()
         return false;
     }
 
-    UKrerusAttributeComponent* TargetAttributes = CombatTarget->GetAttributeComponent();
-
-    if (!IsValid(TargetAttributes) || !TargetAttributes->IsAlive())
-    {
-        return false;
-    }
 
     if (!IsValid(CombatTarget.Get()) || CombatTarget->IsCorpse())
     {
@@ -112,8 +125,9 @@ bool UKrerusCombatComponent::StartAutoAttack()
         return false;
     }
 
-    // Nos suscribimos solo cuando el objetivo ya ha superado las validaciones.
-    TargetAttributes->OnDeath.AddUniqueDynamic(this, &UKrerusCombatComponent::OnCombatTargetDeath);
+    // La selección recibida del cliente debe superar las reglas del servidor.
+    if (CombatTarget->GetWorld() != GetWorld() || !IsTargetInRange(PlayerCharacter, CombatTarget.Get()) ||
+        !IsTargetInFront(PlayerCharacter, CombatTarget.Get())) return false;
 
     bIsAutoAttacking = true;
 
@@ -124,20 +138,17 @@ bool UKrerusCombatComponent::StartAutoAttack()
     return true;
 }
 
-// Libera la suscripción del objetivo, cancela el temporizador e invalida cualquier impacto pendiente.
+// Cancela el temporizador e invalida cualquier impacto pendiente en autoridad.
 void UKrerusCombatComponent::StopAutoAttack()
 {
+    if (!GetOwner()->HasAuthority())
+    {
+        if (!GetOwner()->IsActorBeingDestroyed())
+            if (AKrerusCharacter* Character = Cast<AKrerusCharacter>(GetOwner())) Character->ServerStopAutoAttack();
+        return;
+    }
     const bool bWasAutoAttacking = bIsAutoAttacking;
 
-    if (IsValid(CombatTarget.Get()))
-    {
-        UKrerusAttributeComponent* TargetAttributes = CombatTarget->GetAttributeComponent();
-
-        if (IsValid(TargetAttributes))
-        {
-            TargetAttributes->OnDeath.RemoveDynamic(this, &UKrerusCombatComponent::OnCombatTargetDeath);
-        }
-    }
 
     bIsAutoAttacking = false;
     bAttackImpactConsumed = true;
@@ -150,6 +161,8 @@ void UKrerusCombatComponent::StopAutoAttack()
 
     if (bWasAutoAttacking)
     {
+        if (AKrerusCharacter* Character = Cast<AKrerusCharacter>(GetOwner()))
+            Character->MulticastAutoAttackMontage(false, GetAttackInterval());
         OnAutoAttackStopped.Broadcast();
     }
 }
@@ -165,10 +178,11 @@ float UKrerusCombatComponent::GetAttackInterval() const
 }
 
 // Consume como máximo un impacto por montaje y vuelve a validar alcance, arco frontal y vida.
-// El daño usa AttackPower tradicional y ApplyDamage del objetivo, sin modificar su Health de GAS.
+// AttackPower tradicional alimenta la fórmula; únicamente el GE modifica Health GAS.
 
 void UKrerusCombatComponent::ApplyAutoAttackImpact()
 {
+    if (!GetOwner()->HasAuthority()) return;
     AKrerusCharacter* PlayerCharacter = Cast<AKrerusCharacter>(GetOwner());
 
     if (!IsValid(PlayerCharacter) || !PlayerCharacter->IsAutoAttackMontagePlaying())
@@ -184,7 +198,7 @@ void UKrerusCombatComponent::ApplyAutoAttackImpact()
 
     bAttackImpactConsumed = true;
 
-    if (!bIsAutoAttacking)
+    if (!bIsAutoAttacking || bAutoAttackPaused)
     {
         return;
     }
@@ -226,7 +240,7 @@ void UKrerusCombatComponent::ApplyAutoAttackImpact()
     const UKrerusAttributeSet* TargetAttributeSet =
         TargetASC->GetSet<UKrerusAttributeSet>();
 
-    if (!IsValid(TargetAttributeSet) || TargetAttributeSet->GetHealth() <= 0.0f)
+    if (Target->IsCorpse() || !IsValid(TargetAttributeSet) || TargetAttributeSet->GetHealth() <= 0.0f)
     {
         StopAutoAttack();
         return;
@@ -297,7 +311,7 @@ void UKrerusCombatComponent::ApplyAutoAttackImpact()
 
     OnAutoAttackHit.Broadcast(Target, Damage);
 
-    // La muerte y las reacciones se conectaran a GAS en el siguiente subhito.
+    if (Target->IsCorpse()) StopAutoAttack();
 }
 
 
@@ -318,11 +332,12 @@ void UKrerusCombatComponent::OnOwnerDeath()
 // El temporizador inicia la animación si alcance, orientación y estado lo permiten; aquí no se aplica daño.
 void UKrerusCombatComponent::PerformAutoAttack()
 {
+    if (!GetOwner()->HasAuthority() || !bIsAutoAttacking) return;
     UE_LOG(LogTemp, Warning, TEXT("KRERUS DEBUG: AutoAttack=%s | Paused=%s | Target=%s"),
         bIsAutoAttacking ? TEXT("TRUE") : TEXT("FALSE"), bAutoAttackPaused ? TEXT("TRUE") : TEXT("FALSE"),
         IsValid(CombatTarget.Get()) ? *CombatTarget->GetName() : TEXT("NONE"));
 
-    if (bAutoAttackPaused)
+    if (bAutoAttackPaused || GetWorld()->GetTimeSeconds() < NextAttackTime)
     {
         return;
     }
@@ -354,9 +369,7 @@ void UKrerusCombatComponent::PerformAutoAttack()
         return;
     }
 
-    UKrerusAttributeComponent* TargetAttributes = Target->GetAttributeComponent();
-
-    if (!IsValid(TargetAttributes) || !TargetAttributes->IsAlive())
+    if (Target->IsCorpse())
     {
         UE_LOG(LogTemp, Warning, TEXT("KRERUS: Objetivo muerto o sin atributos. Autoataque detenido."));
 
@@ -385,9 +398,9 @@ void UKrerusCombatComponent::PerformAutoAttack()
         return;
     }
 
-    bAttackImpactConsumed = false;
-
-    PlayerCharacter->PlayAutoAttackMontage(GetAttackInterval());
+    PlayerCharacter->MulticastAutoAttackMontage(true, GetAttackInterval());
+    bAttackImpactConsumed = !PlayerCharacter->IsAutoAttackMontagePlaying();
+    if (!bAttackImpactConsumed) NextAttackTime = GetWorld()->GetTimeSeconds() + GetAttackInterval();
 }
 
 bool UKrerusCombatComponent::IsTargetInRange(const AKrerusCharacter* PlayerCharacter, const AKrerusEnemy* Target) const
@@ -429,6 +442,11 @@ void UKrerusCombatComponent::CancelPendingAutoAttackImpact()
 // Al reanudar intenta un ataque inmediato y restablece el temporizador si el combate sigue activo.
 void UKrerusCombatComponent::SetAutoAttackPaused(bool bPaused)
 {
+    if (!GetOwner()->HasAuthority())
+    {
+        if (AKrerusCharacter* Character = Cast<AKrerusCharacter>(GetOwner())) Character->ServerSetAutoAttackPaused(bPaused);
+        return;
+    }
     // Evitar procesar dos veces el mismo estado.
     if (bAutoAttackPaused == bPaused)
     {
@@ -436,6 +454,12 @@ void UKrerusCombatComponent::SetAutoAttackPaused(bool bPaused)
     }
 
     bAutoAttackPaused = bPaused;
+    if (bPaused)
+    {
+        CancelPendingAutoAttackImpact();
+        if (AKrerusCharacter* Character = Cast<AKrerusCharacter>(GetOwner()))
+            Character->MulticastAutoAttackMontage(false, GetAttackInterval());
+    }
 
     UE_LOG(LogTemp, Log, TEXT("KRERUS COMBAT: Autoataque %s"), bAutoAttackPaused ? TEXT("PAUSADO") : TEXT("REANUDADO"));
 
@@ -456,4 +480,17 @@ void UKrerusCombatComponent::SetAutoAttackPaused(bool bPaused)
 bool UKrerusCombatComponent::IsAutoAttackPaused() const
 {
     return bAutoAttackPaused;
+}
+void UKrerusCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME_CONDITION(UKrerusCombatComponent, CombatTarget, COND_OwnerOnly);
+    DOREPLIFETIME_CONDITION(UKrerusCombatComponent, bIsAutoAttacking, COND_OwnerOnly);
+    DOREPLIFETIME_CONDITION(UKrerusCombatComponent, bAutoAttackPaused, COND_OwnerOnly);
+}
+
+void UKrerusCombatComponent::OnRep_AutoAttacking()
+{
+    if (bIsAutoAttacking) OnAutoAttackStarted.Broadcast();
+    else OnAutoAttackStopped.Broadcast();
 }

@@ -27,6 +27,7 @@ public:
     void BeginLeftMouseClick();
     void EndLeftMouseClick();
     void RegisterLeftMouseMovement(const FVector2D& MouseDelta);
+    UFUNCTION(BlueprintCallable, Category = "Targeting")
     void SetSelectedNPC(AKrerusNPC* NewEnemy);
     void ClearSelectedEnemy();
     void ClearSelectionIfTarget(AKrerusNPC* Target);

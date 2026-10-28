@@ -3,14 +3,16 @@
 #include "CoreMinimal.h"
 #include "KrerusNPC.h"
 #include "AbilitySystemInterface.h"
+#include "Net/UnrealNetwork.h"
 #include "KrerusEnemy.generated.h"
 
 class UAbilitySystemComponent;
 class UKrerusAttributeSet;
+struct FOnAttributeChangeData;
 
 /**
  * NPC atacable con ASC propio y atributos GAS, además del AttributeComponent heredado.
- * Las reacciones, muerte y estado de cadáver siguen dependiendo de la vida tradicional.
+ * Health GAS decide daño/muerte; muerte y retirada del cadáver son estado persistente replicado.
  */
 UCLASS()
 class KRERUS_API AKrerusEnemy : public AKrerusNPC, public IAbilitySystemInterface
@@ -44,12 +46,33 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
     TObjectPtr<UKrerusAttributeSet> GASAttributeSet;
 
+    // Estado de muerte autoritativo del enemigo.
+    // Se replica para sincronizar el estado entre servidor y clientes.
+    UPROPERTY(ReplicatedUsing = OnRep_IsDead, BlueprintReadOnly, Category = "Combat|Death")
+    bool bIsDead = false;
+
+    UFUNCTION()
+    void OnRep_IsDead();
+
+    UPROPERTY(ReplicatedUsing = OnRep_CorpseExpired)
+    bool bCorpseExpired = false;
+    UFUNCTION()
+    void OnRep_CorpseExpired();
+    UFUNCTION(NetMulticast, Unreliable)
+    void MulticastHitReaction();
+    bool bDeathVisualsApplied = false;
+    void ApplyDeathState();
     FTimerHandle CorpseTimerHandle;
 
     void OnCorpseTimeExpired();
 
-    UFUNCTION()
-    void OnEnemyHealthChanged(float CurrentHealth, float MaxHealth);
+    // Recibe los cambios del atributo Health de GAS.
+    // Decide si corresponde reproducir un impacto o iniciar la muerte.
+    void OnGASHealthChanged(const FOnAttributeChangeData& Data);
+
+    // Reproduce el montaje de muerte en la instancia local del enemigo.
+    // Puede ejecutarse tanto en el servidor como en los clientes.
+    void PlayDeathAnimation();
 
     UFUNCTION()
     void OnEnemyDeath();
@@ -65,7 +88,11 @@ public:
     UFUNCTION(BlueprintPure, Category = "Combat|Death")
     bool IsCorpse() const;
 
+    UFUNCTION(BlueprintImplementableEvent, Category = "Combat|Death")
+    void BP_OnEnemyDeath();
+
     virtual void Tick(float DeltaTime) override;
 
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

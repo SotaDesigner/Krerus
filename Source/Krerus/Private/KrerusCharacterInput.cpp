@@ -7,6 +7,7 @@
 #include "InputMappingContext.h"
 #include "InputActionValue.h"
 #include "KrerusNPC.h"
+#include "KrerusEnemy.h"
 #include "KrerusInteractable.h"
 #include "AbilitySystemComponent.h"
 #include "KrerusStrikeAbility.h"
@@ -279,37 +280,8 @@ void AKrerusCharacter::OnAutoAttack()
 // Busca la instancia concedida de Strike en el ASC del PlayerState y solicita su activación por Handle.
 void AKrerusCharacter::ActivateStrike()
 {
-    UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-
-    if (!IsValid(ASC))
+    if (AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController()))
     {
-        UE_LOG(LogTemp, Error, TEXT("KRERUS GAS: ASC no encontrado"));
-        return;
+        ServerActivateStrike(Cast<AKrerusEnemy>(PC->GetSelectedNPC()));
     }
-
-    const auto& Abilities = ASC->GetActivatableAbilities();
-
-    UE_LOG(LogTemp, Warning, TEXT("KRERUS GAS: Habilidades concedidas: %d"), Abilities.Num());
-
-    for (const FGameplayAbilitySpec& Spec : Abilities)
-    {
-        if (!Spec.Ability)
-        {
-            continue;
-        }
-
-        UE_LOG(LogTemp, Warning, TEXT("KRERUS GAS: Habilidad encontrada: %s"), *GetNameSafe(Spec.Ability->GetClass()));
-
-        if (Spec.Ability->IsA(UKrerusStrikeAbility::StaticClass()))
-        {
-            const bool bActivated = ASC->TryActivateAbility(Spec.Handle);
-
-            UE_LOG(LogTemp, Warning, TEXT("KRERUS GAS: Strike | Activacion: %s"),
-                bActivated ? TEXT("CORRECTA") : TEXT("FALLIDA"));
-
-            return;
-        }
-    }
-
-    UE_LOG(LogTemp, Error, TEXT("KRERUS GAS: Strike no esta concedida"));
 }

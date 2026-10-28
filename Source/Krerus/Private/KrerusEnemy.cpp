@@ -6,6 +6,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "AbilitySystemComponent.h"
 #include "KrerusAttributeSet.h"
+#include "Net/UnrealNetwork.h"
+#include "Animation/AnimInstance.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "EngineUtils.h"
 
 AKrerusEnemy::AKrerusEnemy()
 {
@@ -22,33 +26,50 @@ AKrerusEnemy::AKrerusEnemy()
     GASAttributeSet = CreateDefaultSubobject<UKrerusAttributeSet>(TEXT("GASAttributeSet"));
 }
 
-void AKrerusEnemy::OnEnemyHealthChanged(float CurrentHealth, float MaxHealth)
+void AKrerusEnemy::OnGASHealthChanged(const FOnAttributeChangeData& Data)
 {
-    if (CurrentHealth < PreviousHealth && CurrentHealth > 0.0f)
+    if (!HasAuthority() || bIsDead) return;
+    const float OldHealth = Data.OldValue;
+    const float NewHealth = Data.NewValue;
+
+    UE_LOG(LogTemp,Warning,TEXT("KRERUS GAS: Enemigo %s | Health: %.1f -> %.1f"),*GetNameSafe(this),OldHealth,NewHealth);
+
+    // Ignorar curaciones y cambios que no reduzcan la vida.
+    if (NewHealth >= OldHealth || OldHealth <= 0.0f)
     {
-        PlayHitReaction();
+        return;
     }
 
-    PreviousHealth = CurrentHealth;
+    // La muerte tiene prioridad sobre cualquier reacción de impacto.
+    if (NewHealth <= 0.0f)
+    {
+        OnEnemyDeath();
+        return;
+    }
+
+    MulticastHitReaction();
 }
 
-// Suscribe reacciones y muerte a los atributos heredados del NPC; inicializa aparte el ASC propio del enemigo.
+// Reacciones y muerte proceden exclusivamente de Health GAS.
 void AKrerusEnemy::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (IsValid(AttributeComponent))
+    if (!IsValid(AbilitySystemComponent) || !IsValid(GASAttributeSet))
     {
-        PreviousHealth = AttributeComponent->GetCurrentHealth();
-        AttributeComponent->OnHealthChanged.AddUniqueDynamic(this, &AKrerusEnemy::OnEnemyHealthChanged);
+        UE_LOG(LogTemp, Error, TEXT("KRERUS GAS: Enemy sin ASC o AttributeSet"));
+        return;
     }
 
-    AttributeComponent->OnDeath.AddUniqueDynamic(this, &AKrerusEnemy::OnEnemyDeath);
+    AbilitySystemComponent->InitAbilityActorInfo(this, this);
 
-    if (AbilitySystemComponent)
-    {
-        AbilitySystemComponent->InitAbilityActorInfo(this, this);
-    }
+    // Suscribimos las reacciones a Health de GAS, no a la vida tradicional.
+    AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UKrerusAttributeSet::GetHealthAttribute()).AddUObject(this, &AKrerusEnemy::OnGASHealthChanged);
+
+    PreviousHealth = GASAttributeSet->GetHealth();
+    if (HasAuthority() && PreviousHealth <= 0.0f) OnEnemyDeath();
+
+    UE_LOG(LogTemp,Display,TEXT("KRERUS GAS: Enemy inicializado | Health: %.1f"),PreviousHealth);
 }
 
 void AKrerusEnemy::Tick(float DeltaTime)
@@ -63,7 +84,7 @@ void AKrerusEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 void AKrerusEnemy::PlayHitReaction()
 {
-    if (!IsValid(AttributeComponent) || !AttributeComponent->IsAlive())
+    if (bIsDead || bCorpseExpired)
     {
         return;
     }
@@ -95,8 +116,95 @@ void AKrerusEnemy::PlayHitReaction()
     AnimInstance->Montage_Play(HitReactionMontage);
 }
 
-// Evento de muerte tradicional: reproduce el montaje y programa el tiempo de permanencia del cadáver.
+// El servidor publica la muerte y programa la retirada persistente del cadáver.
 void AKrerusEnemy::OnEnemyDeath()
+{
+    // La lógica autoritativa de muerte solo se ejecuta en el servidor.
+    if (!HasAuthority())
+    {
+        return;
+    }
+
+    if (bIsDead)
+    {
+        return;
+    }
+
+    bIsDead = true;
+
+    UE_LOG(LogTemp,Warning,TEXT("KRERUS GAS: Enemigo %s ha muerto"),*GetName());
+
+    ForceNetUpdate();
+    ApplyDeathState();
+    // Iniciar el temporizador de desaparición del cadáver.
+    if (CorpseDuration > 0.0f)
+        GetWorldTimerManager().SetTimer(CorpseTimerHandle,this,&AKrerusEnemy::OnCorpseTimeExpired,CorpseDuration,false);
+    else OnCorpseTimeExpired();
+}
+
+// bIsDead también cubre el orden de llegada de la replicación de Health y muerte.
+bool AKrerusEnemy::IsCorpse() const
+{
+    return bIsDead || !IsValid(GASAttributeSet) || GASAttributeSet->GetHealth() <= 0.0f;
+}
+
+// Retira la selección del controlador local 0 y oculta el cadáver sin destruir el actor.
+void AKrerusEnemy::OnCorpseTimeExpired()
+{
+    UE_LOG(LogTemp, Warning, TEXT("KRERUS COMBAT: Ha terminado el tiempo del cadaver de %s"), *GetName());
+
+    if (!HasAuthority()) return;
+    bCorpseExpired = true;
+    ForceNetUpdate();
+    OnRep_CorpseExpired();
+}
+
+void AKrerusEnemy::OnRep_CorpseExpired()
+{
+    if (!bCorpseExpired) return;
+    // Limpiar la selección local; el puntero del otro jugador no pertenece a este proceso.
+    for (TActorIterator<AKrerusPlayerController> It(GetWorld()); It; ++It)
+    {
+        if (It->IsLocalController()) It->ClearSelectionIfTarget(this);
+    }
+
+    // Ocultar al enemigo.
+    SetActorHiddenInGame(true);
+
+    // Desactivar todas sus colisiones.
+    SetActorEnableCollision(false);
+}
+
+UAbilitySystemComponent* AKrerusEnemy::GetAbilitySystemComponent() const
+{
+    return AbilitySystemComponent;
+}
+
+void AKrerusEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(AKrerusEnemy, bIsDead);
+    DOREPLIFETIME(AKrerusEnemy, bCorpseExpired);
+}
+
+void AKrerusEnemy::OnRep_IsDead()
+{
+    UE_LOG(
+        LogTemp,
+        Display,
+        TEXT("KRERUS NETWORK: %s | Estado de muerte replicado: %s"),
+        *GetNameSafe(this),
+        bIsDead ? TEXT("MUERTO") : TEXT("VIVO")
+    );
+
+    if (bIsDead)
+    {
+        ApplyDeathState();
+    }
+}
+
+void AKrerusEnemy::PlayDeathAnimation()
 {
     if (!IsValid(DeathMontage))
     {
@@ -117,49 +225,21 @@ void AKrerusEnemy::OnEnemyDeath()
         return;
     }
 
+    AnimInstance->Montage_Stop(0.1f);
     AnimInstance->Montage_Play(DeathMontage);
-
-    UE_LOG(LogTemp, Warning, TEXT("KRERUS COMBAT: Enemigo %s ha muerto"), *GetName());
-
+}
+void AKrerusEnemy::ApplyDeathState()
+{
     if (UCapsuleComponent* Capsule = GetCapsuleComponent())
-    {
         Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-    }
-
-    GetWorldTimerManager().SetTimer(CorpseTimerHandle, this, &AKrerusEnemy::OnCorpseTimeExpired, CorpseDuration, false);
+    if (bDeathVisualsApplied || bCorpseExpired) return;
+    bDeathVisualsApplied = true;
+    PlayDeathAnimation();
+    // Este evento debe contener presentación; recompensas/lógica solo en autoridad.
+    BP_OnEnemyDeath();
 }
 
-// Consulta la vida tradicional, no Health de GAS: agotar solo GAS no convierte al enemigo en cadáver.
-bool AKrerusEnemy::IsCorpse() const
+void AKrerusEnemy::MulticastHitReaction_Implementation()
 {
-    if (!IsValid(AttributeComponent))
-    {
-        return false;
-    }
-
-    return !AttributeComponent->IsAlive();
-}
-
-// Retira la selección del controlador local 0 y oculta el cadáver sin destruir el actor.
-void AKrerusEnemy::OnCorpseTimeExpired()
-{
-    UE_LOG(LogTemp, Warning, TEXT("KRERUS COMBAT: Ha terminado el tiempo del cadaver de %s"), *GetName());
-
-    // Limpiar la selección si este enemigo está seleccionado.
-    if (AKrerusPlayerController* PlayerController =
-            Cast<AKrerusPlayerController>(UGameplayStatics::GetPlayerController(this, 0)))
-    {
-        PlayerController->ClearSelectionIfTarget(this);
-    }
-
-    // Ocultar al enemigo.
-    SetActorHiddenInGame(true);
-
-    // Desactivar todas sus colisiones.
-    SetActorEnableCollision(false);
-}
-
-UAbilitySystemComponent* AKrerusEnemy::GetAbilitySystemComponent() const
-{
-    return AbilitySystemComponent;
+    PlayHitReaction();
 }
