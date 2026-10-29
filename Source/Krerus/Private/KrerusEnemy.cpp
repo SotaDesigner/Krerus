@@ -1,5 +1,5 @@
 #include "KrerusEnemy.h"
-#include "KrerusAttributeComponent.h"
+#include "KrerusAbilitySystemComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "TimerManager.h"
 #include "KrerusPlayerController.h"
@@ -38,8 +38,7 @@ void AKrerusEnemy::OnGASHealthChanged(const FOnAttributeChangeData& Data)
     // La muerte tiene prioridad sobre cualquier reacción de impacto.
     if (NewHealth <= 0.0f)
     {
-        OnEnemyDeath();
-        return;
+        return; // El ASC notifica la muerte después de limpiar habilidades y relaciones.
     }
 
     MulticastHitReaction();
@@ -56,12 +55,14 @@ void AKrerusEnemy::BeginPlay()
         return;
     }
 
-    AbilitySystemComponent->InitAbilityActorInfo(this, this);
+    // NPC ya inicializó Owner/Avatar. El ASC centraliza la transición de muerte.
+    if (auto* ASC = Cast<UKrerusAbilitySystemComponent>(AbilitySystemComponent))
+        ASC->OnASCDeath.AddUObject(this, &AKrerusEnemy::OnEnemyDeath);
 
     // Suscribimos las reacciones a Health de GAS, no a la vida tradicional.
     AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UKrerusAttributeSet::GetHealthAttribute()).AddUObject(this, &AKrerusEnemy::OnGASHealthChanged);
 
-    PreviousHealth = GASAttributeSet->GetHealth();
+    const float PreviousHealth = GASAttributeSet->GetHealth();
     if (HasAuthority() && PreviousHealth <= 0.0f) OnEnemyDeath();
 
     UE_LOG(LogTemp,Display,TEXT("KRERUS GAS: Enemy inicializado | Health: %.1f"),PreviousHealth);
@@ -126,11 +127,6 @@ void AKrerusEnemy::OnEnemyDeath()
     }
 
     bIsDead = true;
-
-    if (IsValid(CombatStateComponent))
-    {
-        CombatStateComponent->ClearCombatRelations();
-    }
 
     UE_LOG(LogTemp,Warning,TEXT("KRERUS GAS: Enemigo %s ha muerto"),*GetName());
 

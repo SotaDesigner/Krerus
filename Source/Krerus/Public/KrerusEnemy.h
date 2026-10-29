@@ -70,7 +70,7 @@ protected:
     void OnCorpseTimeExpired();
 
     // Recibe los cambios del atributo Health de GAS.
-    // Decide si corresponde reproducir un impacto o iniciar la muerte.
+    // Solo reproduce impactos no mortales; OnASCDeath inicia la muerte.
     void OnGASHealthChanged(const FOnAttributeChangeData& Data);
 
     // Reproduce el montaje de muerte en la instancia local del enemigo.
@@ -80,7 +80,6 @@ protected:
     UFUNCTION()
     void OnEnemyDeath();
 
-    float PreviousHealth = 0.0f;
 
     virtual void BeginPlay() override;
 

@@ -69,7 +69,7 @@ void UKrerusAttributeSet::OnRep_MaxMana(const FGameplayAttributeData& OldValue)
     GAMEPLAYATTRIBUTE_REPNOTIFY(UKrerusAttributeSet, MaxMana, OldValue);
 }
 
-// Limita vida y maná tras ejecutar efectos; no conecta esta vida con OnDeath del AttributeComponent.
+// Limita recursos tras ejecutar efectos; el ASC observa Health para detectar muerte.
 void UKrerusAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
     Super::PostGameplayEffectExecute(Data);

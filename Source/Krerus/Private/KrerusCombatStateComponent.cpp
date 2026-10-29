@@ -7,29 +7,11 @@
 // Sets default values for this component's properties
 UKrerusCombatStateComponent::UKrerusCombatStateComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 
 	SetIsReplicatedByDefault(true);
 }
 
-
-// Called when the game starts
-void UKrerusCombatStateComponent::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// ...
-	
-}
-
-
-// Called every frame
-void UKrerusCombatStateComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
-}
 
 bool UKrerusCombatStateComponent::IsInCombat()
 {

@@ -77,29 +77,3 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes")
     float CriticalChance = 0.0f;
 };
-
-// Coeficientes editables usados por AttributeComponent al derivar estadísticas y vida máxima.
-USTRUCT(BlueprintType)
-struct FKrerusAttributeScaling
-{
-    GENERATED_BODY()
-
-public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scaling")
-    float StrengthToAttackPower = 1.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scaling")
-    float AgilityToAttackPower = 0.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scaling")
-    float IntellectToSpellPower = 1.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scaling")
-    float AgilityToCriticalChance = 0.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scaling")
-    float StaminaToArmor = 0.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scaling")
-    float StaminaToHealth = 10.0f;
-};

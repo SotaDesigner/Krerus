@@ -68,8 +68,35 @@ void AKrerusCharacter::BeginPlay()
         GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
         GetMesh()->bEnableUpdateRateOptimizations = false;
     }
-    if (AttributeComponent) AttributeComponent->InitializeGAS();
     CameraSystem->InitializeCamera(CameraBoom);
+}
+
+void AKrerusCharacter::InitializeCharacterAttributes()
+{
+    if(!HasAuthority())
+    { 
+        return;
+    }
+
+    AKrerusPlayerState* KrerusPS = GetPlayerState<AKrerusPlayerState>();
+
+    if(!KrerusPS)
+    {
+        return;
+    }
+
+    UKrerusAbilitySystemComponent* KrerusASC = Cast<UKrerusAbilitySystemComponent>(KrerusPS->GetAbilitySystemComponent());
+
+    if (!KrerusASC)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Krerus GAS] No se ha encontrado el AASC personalizado."))
+        return;
+    }
+
+    if (!KrerusASC->InitializeAttributes(InitialAttributes))
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Krerus GAS] Error inicializando atribbutos del jugador."))
+    }
 }
 
 void AKrerusCharacter::Tick(float DeltaTime)
@@ -226,12 +253,16 @@ void AKrerusCharacter::InitializeAbilitySystem()
     }
 
     ASC->InitAbilityActorInfo(KrerusPS, this);
-    if (!AttributeComponent) AttributeComponent=FindComponentByClass<UKrerusAttributeComponent>();
-    if (AttributeComponent) AttributeComponent->InitializeGAS();
 
-    UE_LOG(LogTemp, Display, TEXT("KRERUS GAS: Inicializado | Owner: %s | Avatar: %s"),
-        *GetNameSafe(ASC->GetOwnerActor()), *GetNameSafe(ASC->GetAvatarActor()));
+    // Inicialización de estadísticas: solo en el servidor.
+    if (HasAuthority())
+    {
+        InitializeCharacterAttributes();
+    }
+
+    UE_LOG(LogTemp, Display, TEXT("KRERUS GAS: Inicializado | Owner: %s | Avatar: %s"), *GetNameSafe(ASC->GetOwnerActor()), *GetNameSafe(ASC->GetAvatarActor()));
 }
+
 void AKrerusCharacter::ServerStartAutoAttack_Implementation(AKrerusEnemy* Target)
 {
     if (!HasAuthority()) return;

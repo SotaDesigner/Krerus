@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "KrerusInteractable.h"
 #include "AbilitySystemInterface.h"
+#include "KrerusAttributeInitialization.h"
 #include "KrerusNPC.generated.h"
 
 class UKrerusAttributeComponent;
@@ -35,6 +36,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes")
     TObjectPtr<UKrerusAttributeComponent> AttributeComponent;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Krerus|Attributes")
+    FKrerusAttributeInitialization InitialAttributes;
 
 public:
     virtual void Tick(float DeltaTime) override;

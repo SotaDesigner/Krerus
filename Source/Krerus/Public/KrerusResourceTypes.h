@@ -13,7 +13,7 @@ enum class EKrerusResourceType : uint8
     Rage UMETA(DisplayName = "Rage")
 };
 
-// Configuracion inicial del recurso GAS; CurrentValue ya no es un almacen de ejecucion.
+// Selección del recurso que expone la API Blueprint; valores y máximos pertenecen a GAS.
 USTRUCT(BlueprintType)
 struct FKrerusResource
 {
@@ -23,9 +23,4 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
     EKrerusResourceType Type = EKrerusResourceType::None;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource", meta = (ClampMin = "0.0"))
-    float MaxValue = 100.0f;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Resource")
-    float CurrentValue = 100.0f;
 };

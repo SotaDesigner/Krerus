@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
+#include "KrerusAttributeInitialization.h"
+#include "KrerusAbilitySystemComponent.h"
 #include "KrerusCharacter.generated.h"
 
 class AKrerusEnemy;
@@ -56,6 +58,7 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    void InitializeCharacterAttributes();
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     TObjectPtr<class USpringArmComponent> CameraBoom;
@@ -131,6 +134,9 @@ protected:
 
     FRotator FreeMovementRotation = FRotator::ZeroRotator;
     bool bWasMoving = false;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Krerus|Attributes")
+    FKrerusAttributeInitialization InitialAttributes;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes")
     TObjectPtr<UKrerusAttributeComponent> AttributeComponent;

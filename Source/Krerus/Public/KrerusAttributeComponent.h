@@ -7,27 +7,13 @@
 #include "KrerusAttributeComponent.generated.h"
 class UAbilitySystemComponent;
 class UKrerusAttributeSet;
-struct FOnAttributeChangeData;
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthChanged, float, CurrentHealth, float, MaxHealth);
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(
-    FOnResourceChanged, EKrerusResourceType, ResourceType, float, CurrentValue, float, MaxValue);
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributesChanged, FKrerusPrimaryAttributes, NewAttributes);
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDerivedAttributesChanged, FKrerusDerivedAttributes, NewAttributes);
-
-
-/** Blueprint-compatible view of GAS. No independent health, resources, stats or modifier calculations. */
+/** Operaciones Blueprint sobre GAS: sin almacén de atributos ni suscripciones propias. */
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class KRERUS_API UKrerusAttributeComponent : public UActorComponent
 {
     GENERATED_BODY()
 public:
     UKrerusAttributeComponent();
-    void InitializeGAS();
     UFUNCTION(BlueprintPure, Category="Attributes|Health") float GetCurrentHealth() const;
     UFUNCTION(BlueprintPure, Category="Attributes|Health") float GetMaxHealth() const;
     UFUNCTION(BlueprintCallable, Category="Attributes|Health") void ApplyDamage(float Amount);
@@ -43,24 +29,13 @@ public:
     UFUNCTION(BlueprintCallable, Category="Attributes|Modifiers") FGuid AddAttributeModifier(FKrerusAttributeModifier Modifier);
     UFUNCTION(BlueprintCallable, Category="Attributes|Modifiers") bool RemoveAttributeModifier(FGuid Id);
 
-    UPROPERTY(BlueprintAssignable, Category="Attributes|Events") FOnHealthChanged OnHealthChanged;
-    UPROPERTY(BlueprintAssignable, Category="Attributes|Events") FOnDeath OnDeath;
-    UPROPERTY(BlueprintAssignable, Category="Attributes|Events") FOnResourceChanged OnResourceChanged;
-    UPROPERTY(BlueprintAssignable, Category="Attributes|Events") FOnAttributesChanged OnAttributesChanged;
-    UPROPERTY(BlueprintAssignable, Category="Attributes|Events") FOnDerivedAttributesChanged OnDerivedAttributesChanged;
 protected:
-    // Existing Blueprint defaults remain usable as startup configuration, not runtime values.
+    // Solo selecciona el recurso visible; InitialAttributes del actor configura GAS.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Attributes|Resources") FKrerusResource Resource;
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Attributes|Primary") FKrerusPrimaryAttributes BaseAttributes;
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Attributes|Scaling") FKrerusAttributeScaling AttributeScaling;
-    virtual void BeginPlay() override;
-    virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 private:
     UAbilitySystemComponent* GetASC() const;
     const UKrerusAttributeSet* GetAttributes() const;
-    void OnGASChanged(const FOnAttributeChangeData& Data);
     bool ApplyDelta(FName Attribute, float Amount);
     FName ResourceName() const;
-    TWeakObjectPtr<UAbilitySystemComponent> BoundASC;
     TMap<FGuid, FActiveGameplayEffectHandle> ModifierHandles;
 };

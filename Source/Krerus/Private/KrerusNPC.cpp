@@ -2,12 +2,13 @@
 #include "KrerusAttributeComponent.h"
 #include "AbilitySystemComponent.h"
 #include "KrerusAttributeSet.h"
+#include "KrerusAbilitySystemComponent.h"
 
 AKrerusNPC::AKrerusNPC()
 {
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
-    AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+    AbilitySystemComponent = CreateDefaultSubobject<UKrerusAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
     AbilitySystemComponent->SetIsReplicated(true);
     AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full);
     GASAttributeSet = CreateDefaultSubobject<UKrerusAttributeSet>(TEXT("GASAttributeSet"));
@@ -18,7 +19,17 @@ void AKrerusNPC::BeginPlay()
 {
     Super::BeginPlay();
     AbilitySystemComponent->InitAbilityActorInfo(this,this);
-    if (AttributeComponent) AttributeComponent->InitializeGAS();
+    
+    if (HasAuthority())
+    {
+        UKrerusAbilitySystemComponent* KrerusASC = Cast<UKrerusAbilitySystemComponent>(AbilitySystemComponent);
+        if (!KrerusASC || !KrerusASC->InitializeAttributes(InitialAttributes))
+        {
+            UE_LOG(LogTemp, Error, TEXT("[Krerus GAS] Error inicializando atributos del NPC %s"), *GetName());
+        }
+    }
+
+
 }
 
 void AKrerusNPC::Tick(float DeltaTime)

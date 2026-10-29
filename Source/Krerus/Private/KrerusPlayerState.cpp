@@ -3,10 +3,11 @@
 #include "KrerusAttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/GameplayAbility.h"
+#include "KrerusAbilitySystemComponent.h"
 
 AKrerusPlayerState::AKrerusPlayerState()
 {
-    AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+    AbilitySystemComponent = CreateDefaultSubobject<UKrerusAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 
     AbilitySystemComponent->SetIsReplicated(true);
 
