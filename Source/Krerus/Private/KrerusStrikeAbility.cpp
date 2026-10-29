@@ -5,7 +5,7 @@
 #include "KrerusPlayerController.h"
 #include "KrerusEnemy.h"
 #include "KrerusAttributeSet.h"
-#include "KrerusAttributeComponent.h"
+#include "KrerusCombatStateComponent.h"
 
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
@@ -56,7 +56,9 @@ void UKrerusStrikeAbility::ActivateAbility(
         return;
     }
 
-    if (!Character->GetAttributeComponent() || !Character->GetAttributeComponent()->IsAlive() ||
+    const auto* PlayerASC=Character->GetAbilitySystemComponent();
+    const auto* PlayerGAS=PlayerASC?PlayerASC->GetSet<UKrerusAttributeSet>():nullptr;
+    if (!PlayerGAS || PlayerGAS->GetHealth()<=0.f ||
         Target->GetWorld() != Character->GetWorld())
     {
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -77,20 +79,13 @@ void UKrerusStrikeAbility::ActivateAbility(
     // Un enemigo sin vida GAS no puede recibir Strike ni provocar gasto de mana.
     if (!IsValid(TargetAttributes) || TargetAttributes->GetHealth() <= 0.0f)
     {
-        UE_LOG(
-            LogTemp,
-            Warning,
-            TEXT("KRERUS GAS: Strike cancelado. Objetivo sin vida.")
-        );
+        UE_LOG(LogTemp,Warning,TEXT("KRERUS GAS: Strike cancelado. Objetivo sin vida."));
 
         EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
         return;
     }
 
-    const float Distance = FVector::Dist(
-        Character->GetActorLocation(),
-        Target->GetActorLocation()
-    );
+    const float Distance = FVector::Dist(Character->GetActorLocation(),Target->GetActorLocation());
 
     if (!FMath::IsFinite(Distance) || Distance > AbilityRange || Target->IsCorpse())
     {
@@ -105,34 +100,40 @@ void UKrerusStrikeAbility::ActivateAbility(
         return;
     }
 
-    FGameplayEffectSpecHandle DamageSpec =
-        MakeOutgoingGameplayEffectSpec(DamageEffectClass, 1.0f);
+    FGameplayEffectSpecHandle DamageSpec = MakeOutgoingGameplayEffectSpec(DamageEffectClass, 1.0f);
 
     if (DamageSpec.IsValid())
     {
-        TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpec.Data.Get());
+        const FActiveGameplayEffectHandle AppliedHandle = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpec.Data.Get());
 
-        UE_LOG(
-            LogTemp,
-            Display,
-            TEXT("KRERUS GAS: Strike aplicado a %s"),
-            *GetNameSafe(Target)
-        );
+        if (!AppliedHandle.WasSuccessfullyApplied())
+        {
+            UE_LOG(LogTemp,Warning,TEXT("KRERUS GAS: Strike no pudo aplicar su GameplayEffect"));
 
-        const UKrerusAttributeSet* PlayerAttributes =
-            ActorInfo->AbilitySystemComponent->GetSet<UKrerusAttributeSet>();
+            EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+            return;
+        }
+
+        // Registrar la relación si el enemigo sigue vivo.
+        if (!Target->IsCorpse() && TargetAttributes->GetHealth() > 0.0f)
+        {
+            UKrerusCombatStateComponent* CombatState =
+                Character->GetCombatStateComponent();
+
+            if (IsValid(CombatState))
+            {
+                CombatState->AddCombatRelation(Target);
+            }
+        }
+
+        UE_LOG(LogTemp,Display,TEXT("KRERUS GAS: Strike aplicado a %s"),*GetNameSafe(Target));
+
+        const UKrerusAttributeSet* PlayerAttributes = ActorInfo->AbilitySystemComponent->GetSet<UKrerusAttributeSet>();
 
         if (PlayerAttributes)
         {
-            UE_LOG(
-                LogTemp,
-                Warning,
-                TEXT("KRERUS GAS: RESULTADO | Enemigo HP: %.1f / %.1f | Jugador Mana: %.1f / %.1f"),
-                TargetAttributes->GetHealth(),
-                TargetAttributes->GetMaxHealth(),
-                PlayerAttributes->GetMana(),
-                PlayerAttributes->GetMaxMana()
-            );
+            UE_LOG(LogTemp,Warning,TEXT("KRERUS GAS: RESULTADO | Enemigo HP: %.1f / %.1f | Jugador Mana: %.1f / %.1f"),TargetAttributes->GetHealth(),
+                TargetAttributes->GetMaxHealth(),PlayerAttributes->GetMana(),PlayerAttributes->GetMaxMana());
         }
     }
 

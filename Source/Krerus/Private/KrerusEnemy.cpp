@@ -10,6 +10,7 @@
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "EngineUtils.h"
+#include "KrerusCombatStateComponent.h"
 
 AKrerusEnemy::AKrerusEnemy()
 {
@@ -17,13 +18,7 @@ AKrerusEnemy::AKrerusEnemy()
 
     bReplicates = true;
 
-    AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-
-    AbilitySystemComponent->SetIsReplicated(true);
-
-    AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full);
-
-    GASAttributeSet = CreateDefaultSubobject<UKrerusAttributeSet>(TEXT("GASAttributeSet"));
+    CombatStateComponent = CreateDefaultSubobject<UKrerusCombatStateComponent>(TEXT("CombatStateComponent"));
 }
 
 void AKrerusEnemy::OnGASHealthChanged(const FOnAttributeChangeData& Data)
@@ -132,6 +127,11 @@ void AKrerusEnemy::OnEnemyDeath()
 
     bIsDead = true;
 
+    if (IsValid(CombatStateComponent))
+    {
+        CombatStateComponent->ClearCombatRelations();
+    }
+
     UE_LOG(LogTemp,Warning,TEXT("KRERUS GAS: Enemigo %s ha muerto"),*GetName());
 
     ForceNetUpdate();
@@ -178,6 +178,11 @@ void AKrerusEnemy::OnRep_CorpseExpired()
 UAbilitySystemComponent* AKrerusEnemy::GetAbilitySystemComponent() const
 {
     return AbilitySystemComponent;
+}
+
+UKrerusCombatStateComponent* AKrerusEnemy::GetCombatStateComponent() const
+{
+    return CombatStateComponent;
 }
 
 void AKrerusEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

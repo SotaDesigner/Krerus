@@ -8,6 +8,7 @@
 
 class UAbilitySystemComponent;
 class UKrerusAttributeSet;
+class UKrerusCombatStateComponent;
 struct FOnAttributeChangeData;
 
 /**
@@ -15,7 +16,7 @@ struct FOnAttributeChangeData;
  * Health GAS decide daño/muerte; muerte y retirada del cadáver son estado persistente replicado.
  */
 UCLASS()
-class KRERUS_API AKrerusEnemy : public AKrerusNPC, public IAbilitySystemInterface
+class KRERUS_API AKrerusEnemy : public AKrerusNPC
 {
     GENERATED_BODY()
 
@@ -24,12 +25,18 @@ public:
 
     virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
+    UFUNCTION(BlueprintPure, Category = "Combat|State")
+    UKrerusCombatStateComponent* GetCombatStateComponent() const;
+
 protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Animation")
     TObjectPtr<UAnimMontage> HitReactionMontage = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Animation")
     TObjectPtr<UAnimMontage> DeathMontage = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat|State")
+    TObjectPtr<UKrerusCombatStateComponent> CombatStateComponent;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AggroRing")
     TObjectPtr<UMaterial> AggroRingAlive;
@@ -40,11 +47,7 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Death", meta = (ClampMin = "0.0"))
     float CorpseDuration = 30.0f;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
-    TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
-    TObjectPtr<UKrerusAttributeSet> GASAttributeSet;
+    // ASC and GASAttributeSet are inherited from NPC; no second attribute system.
 
     // Estado de muerte autoritativo del enemigo.
     // Se replica para sincronizar el estado entre servidor y clientes.

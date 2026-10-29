@@ -1,272 +1,183 @@
 #include "KrerusAttributeComponent.h"
+#include "KrerusAttributeSet.h"
+#include "KrerusGASEffects.h"
+#include "KrerusCombatComponent.h"
+#include "KrerusCombatStateComponent.h"
+#include "AbilitySystemGlobals.h"
+#include "AbilitySystemComponent.h"
 
-UKrerusAttributeComponent::UKrerusAttributeComponent()
+UKrerusAttributeComponent::UKrerusAttributeComponent() { PrimaryComponentTick.bCanEverTick=false; }
+UAbilitySystemComponent* UKrerusAttributeComponent::GetASC() const { return UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetOwner()); }
+const UKrerusAttributeSet* UKrerusAttributeComponent::GetAttributes() const { auto* ASC=GetASC(); return ASC ? ASC->GetSet<UKrerusAttributeSet>() : nullptr; }
+void UKrerusAttributeComponent::BeginPlay() { Super::BeginPlay(); InitializeGAS(); }
+void UKrerusAttributeComponent::EndPlay(const EEndPlayReason::Type Reason)
 {
-    PrimaryComponentTick.bCanEverTick = true;
+    if (auto* ASC=BoundASC.Get())
+    {
+        const FGameplayAttribute Attributes[] = {
+            UKrerusAttributeSet::GetHealthAttribute(),
+            UKrerusAttributeSet::GetMaxHealthAttribute(),
+            UKrerusAttributeSet::GetManaAttribute(),
+            UKrerusAttributeSet::GetMaxManaAttribute(),
+            UKrerusAttributeSet::GetEnergyAttribute(),
+            UKrerusAttributeSet::GetMaxEnergyAttribute(),
+            UKrerusAttributeSet::GetRageAttribute(),
+            UKrerusAttributeSet::GetMaxRageAttribute(),
+            UKrerusAttributeSet::GetStrengthAttribute(),
+            UKrerusAttributeSet::GetAgilityAttribute(),
+            UKrerusAttributeSet::GetIntellectAttribute(),
+            UKrerusAttributeSet::GetStaminaAttribute(),
+            UKrerusAttributeSet::GetAttackPowerAttribute(),
+            UKrerusAttributeSet::GetSpellPowerAttribute(),
+            UKrerusAttributeSet::GetArmorAttribute(),
+            UKrerusAttributeSet::GetCriticalChanceAttribute(),
+        };
+        for (const auto& A : Attributes) ASC->GetGameplayAttributeValueChangeDelegate(A).RemoveAll(this);
+    }
+    Super::EndPlay(Reason);
 }
-
-// Modifica la vida tradicional y emite los eventos que usan las reacciones, la muerte y el autoataque.
-void UKrerusAttributeComponent::ApplyDamage(float DamageAmount)
+void UKrerusAttributeComponent::InitializeGAS()
 {
-    if (!FMath::IsFinite(DamageAmount) || DamageAmount <= 0.0f || !IsAlive() || CurrentHealth <= 0.0f)
+    auto* ASC=GetASC(); if (!ASC || !ASC->GetAvatarActor() || !GetAttributes() || BoundASC.Get()==ASC) return;
+    BoundASC=ASC;
+    const FGameplayAttribute Attributes[] = {
+        UKrerusAttributeSet::GetHealthAttribute(),
+        UKrerusAttributeSet::GetMaxHealthAttribute(),
+        UKrerusAttributeSet::GetManaAttribute(),
+        UKrerusAttributeSet::GetMaxManaAttribute(),
+        UKrerusAttributeSet::GetEnergyAttribute(),
+        UKrerusAttributeSet::GetMaxEnergyAttribute(),
+        UKrerusAttributeSet::GetRageAttribute(),
+        UKrerusAttributeSet::GetMaxRageAttribute(),
+        UKrerusAttributeSet::GetStrengthAttribute(),
+        UKrerusAttributeSet::GetAgilityAttribute(),
+        UKrerusAttributeSet::GetIntellectAttribute(),
+        UKrerusAttributeSet::GetStaminaAttribute(),
+        UKrerusAttributeSet::GetAttackPowerAttribute(),
+        UKrerusAttributeSet::GetSpellPowerAttribute(),
+        UKrerusAttributeSet::GetArmorAttribute(),
+        UKrerusAttributeSet::GetCriticalChanceAttribute(),
+    };
+    for (const auto& A : Attributes) ASC->GetGameplayAttributeValueChangeDelegate(A).AddUObject(this,&UKrerusAttributeComponent::OnGASChanged);
+    if (GetOwner()->HasAuthority())
     {
-        return;
-    }
-
-    const float PreviousHealth = CurrentHealth;
-
-    CurrentHealth = FMath::Clamp(CurrentHealth - DamageAmount, 0.0f, MaxHealth);
-
-    if (PreviousHealth != CurrentHealth)
-    {
-        OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
-
-        UE_LOG(LogTemp, Warning, TEXT("KRERUS: Daño recibido | Vida: %.1f / %.1f"), CurrentHealth, MaxHealth);
-    }
-
-    if (PreviousHealth >= 0.0f && CurrentHealth <= 0.0f)
-    {
-        OnDeath.Broadcast();
-
-        UE_LOG(LogTemp, Warning, TEXT("KRERUS: %s ha muerto"), *GetNameSafe(GetOwner()));
-    }
-}
-
-void UKrerusAttributeComponent::Heal(float HealAmount)
-{
-    if (!FMath::IsFinite(HealAmount) || HealAmount <= 0.0f || !IsAlive() || CurrentHealth <= 0.0f)
-    {
-        return;
-    }
-
-    const float PreviousHealth = CurrentHealth;
-
-    CurrentHealth = FMath::Clamp(CurrentHealth + HealAmount, 0.0f, MaxHealth);
-
-    if (CurrentHealth != PreviousHealth)
-    {
-        OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
-
-        UE_LOG(LogTemp, Warning, TEXT("KRERUS: Curación recibida | Vida: %.1f / %.1f"), CurrentHealth, MaxHealth);
-    }
-}
-
-void UKrerusAttributeComponent::BeginPlay()
-{
-    Super::BeginPlay();
-
-    BaseMaxHealth = FMath::Max(BaseMaxHealth, 1.0f);
-
-    RecalculateAttributes();
-
-    CurrentHealth = MaxHealth;
-
-    InitializeResource();
-}
-
-// Maná y energía comienzan llenos; ira y None comienzan vacíos dentro del sistema tradicional.
-void UKrerusAttributeComponent::InitializeResource()
-{
-    Resource.MaxValue = FMath::Max(Resource.MaxValue, 0.0f);
-
-    switch (Resource.Type)
-    {
-    case EKrerusResourceType::Mana:
-    case EKrerusResourceType::Energy:
-        Resource.CurrentValue = Resource.MaxValue;
-        break;
-
-    case EKrerusResourceType::Rage:
-    case EKrerusResourceType::None:
-    default:
-        Resource.CurrentValue = 0.0f;
-        break;
-    }
-}
-
-// Agrega modificadores, recalcula atributos primarios y derivados y ajusta la vida máxima antes de notificar.
-void UKrerusAttributeComponent::RecalculateAttributes()
-{
-    const FKrerusPrimaryAttributes PreviousAttributes = FinalAttributes;
-
-    AttributeBonuses = FKrerusAttributeModifier();
-
-    for (const FKrerusAttributeModifier& Modifier : ActiveModifiers)
-    {
-        AttributeBonuses.Strength += Modifier.Strength;
-        AttributeBonuses.Agility += Modifier.Agility;
-        AttributeBonuses.Intellect += Modifier.Intellect;
-        AttributeBonuses.Stamina += Modifier.Stamina;
-
-        AttributeBonuses.AttackPower += Modifier.AttackPower;
-        AttributeBonuses.SpellPower += Modifier.SpellPower;
-        AttributeBonuses.Armor += Modifier.Armor;
-        AttributeBonuses.CriticalChance += Modifier.CriticalChance;
-    }
-
-    FinalAttributes.Strength = FMath::Max(0.0f, BaseAttributes.Strength + AttributeBonuses.Strength);
-
-    FinalAttributes.Agility = FMath::Max(0.0f, BaseAttributes.Agility + AttributeBonuses.Agility);
-
-    FinalAttributes.Intellect = FMath::Max(0.0f, BaseAttributes.Intellect + AttributeBonuses.Intellect);
-
-    FinalAttributes.Stamina = FMath::Max(0.0f, BaseAttributes.Stamina + AttributeBonuses.Stamina);
-
-    RecalculateDerivedAttributes();
-
-    RecalculateMaxHealth();
-
-    const bool bAttributesChanged = PreviousAttributes.Strength != FinalAttributes.Strength ||
-        PreviousAttributes.Agility != FinalAttributes.Agility ||
-        PreviousAttributes.Intellect != FinalAttributes.Intellect ||
-        PreviousAttributes.Stamina != FinalAttributes.Stamina;
-
-    if (bAttributesChanged)
-    {
-        OnAttributesChanged.Broadcast(FinalAttributes);
-    }
-}
-
-void UKrerusAttributeComponent::RecalculateDerivedAttributes()
-{
-    const FKrerusDerivedAttributes PreviousAttributes = DerivedAttributes;
-
-    DerivedAttributes.AttackPower = FMath::Max(0.0f,
-        FinalAttributes.Strength * AttributeScaling.StrengthToAttackPower +
-            FinalAttributes.Agility * AttributeScaling.AgilityToAttackPower + AttributeBonuses.AttackPower);
-
-    DerivedAttributes.SpellPower = FMath::Max(
-        0.0f, FinalAttributes.Intellect * AttributeScaling.IntellectToSpellPower + AttributeBonuses.SpellPower);
-
-    DerivedAttributes.Armor =
-        FMath::Max(0.0f, FinalAttributes.Stamina * AttributeScaling.StaminaToArmor + AttributeBonuses.Armor);
-
-    DerivedAttributes.CriticalChance = FMath::Clamp(
-        FinalAttributes.Agility * AttributeScaling.AgilityToCriticalChance + AttributeBonuses.CriticalChance, 0.0f,
-        100.0f);
-
-    const bool bDerivedAttributesChanged = PreviousAttributes.AttackPower != DerivedAttributes.AttackPower ||
-        PreviousAttributes.SpellPower != DerivedAttributes.SpellPower ||
-        PreviousAttributes.Armor != DerivedAttributes.Armor ||
-        PreviousAttributes.CriticalChance != DerivedAttributes.CriticalChance;
-
-    if (bDerivedAttributesChanged)
-    {
-        OnDerivedAttributesChanged.Broadcast(DerivedAttributes);
-    }
-}
-
-void UKrerusAttributeComponent::RecalculateMaxHealth()
-{
-    const float PreviousMaxHealth = MaxHealth;
-    const float PreviousCurrentHealth = CurrentHealth;
-
-    const float NewMaxHealth =
-        FMath::Max(1.0f, BaseMaxHealth + FinalAttributes.Stamina * AttributeScaling.StaminaToHealth);
-
-    MaxHealth = NewMaxHealth;
-
-    // Nunca curamos automáticamente al aumentar la vida máxima.
-    // Si disminuye, limitamos la vida actual al nuevo máximo.
-    CurrentHealth = FMath::Clamp(CurrentHealth, 0.0f, MaxHealth);
-
-    if (PreviousMaxHealth != MaxHealth || PreviousCurrentHealth != CurrentHealth)
-    {
-        OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
-    }
-}
-
-FGuid UKrerusAttributeComponent::AddAttributeModifier(FKrerusAttributeModifier Modifier)
-{
-    Modifier.Id = FGuid::NewGuid();
-
-    ActiveModifiers.Add(Modifier);
-
-    RecalculateAttributes();
-
-    return Modifier.Id;
-}
-
-bool UKrerusAttributeComponent::RemoveAttributeModifier(FGuid ModifierId)
-{
-    if (!ModifierId.IsValid())
-    {
-        return false;
-    }
-
-    for (int32 Index = 0; Index < ActiveModifiers.Num(); ++Index)
-    {
-        if (ActiveModifiers[Index].Id == ModifierId)
+        FGameplayEffectQuery Q; Q.EffectDefinition=UKrerusDerivedStatsEffect::StaticClass();
+        // ASC on PlayerState survives the pawn: do not reset stats/resources on a second initialization.
+        if (ASC->GetActiveEffects(Q).IsEmpty())
         {
-            ActiveModifiers.RemoveAt(Index);
-
-            RecalculateAttributes();
-
-            return true;
+            auto Init=ASC->MakeOutgoingSpec(UKrerusInitialStatsEffect::StaticClass(),1.f,ASC->MakeEffectContext());
+            if (!Init.IsValid()) return;
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("Strength")), FMath::Max(0.f,BaseAttributes.Strength));
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("Agility")), FMath::Max(0.f,BaseAttributes.Agility));
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("Intellect")), FMath::Max(0.f,BaseAttributes.Intellect));
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("Stamina")), FMath::Max(0.f,BaseAttributes.Stamina));
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("AttackPower")), 0.f);
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("SpellPower")), 0.f);
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("Armor")), 0.f);
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("CriticalChance")), 0.f);
+            const float EnergyMax=Resource.Type==EKrerusResourceType::Energy ? FMath::Max(0.f,Resource.MaxValue) : 100.f;
+            const float RageMax=Resource.Type==EKrerusResourceType::Rage ? FMath::Max(0.f,Resource.MaxValue) : 100.f;
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("MaxEnergy")),EnergyMax);
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("Energy")),EnergyMax);
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("MaxRage")),RageMax);
+            Init.Data->SetSetByCallerMagnitude(FName(TEXT("Rage")),0.f);
+            ASC->ApplyGameplayEffectSpecToSelf(*Init.Data.Get());
+            auto Derived=ASC->MakeOutgoingSpec(UKrerusDerivedStatsEffect::StaticClass(),1.f,ASC->MakeEffectContext());
+            if (!Derived.IsValid()) return;
+            Derived.Data->SetSetByCallerMagnitude(FName(TEXT("StrengthToAttackPower")),AttributeScaling.StrengthToAttackPower);
+            Derived.Data->SetSetByCallerMagnitude(FName(TEXT("AgilityToAttackPower")),AttributeScaling.AgilityToAttackPower);
+            Derived.Data->SetSetByCallerMagnitude(FName(TEXT("IntellectToSpellPower")),AttributeScaling.IntellectToSpellPower);
+            Derived.Data->SetSetByCallerMagnitude(FName(TEXT("AgilityToCriticalChance")),AttributeScaling.AgilityToCriticalChance);
+            Derived.Data->SetSetByCallerMagnitude(FName(TEXT("StaminaToArmor")),AttributeScaling.StaminaToArmor);
+            Derived.Data->SetSetByCallerMagnitude(FName(TEXT("StaminaToHealth")),AttributeScaling.StaminaToHealth);
+            Derived.Data->SetSetByCallerMagnitude(FName(TEXT("InitialStamina")),FMath::Max(0.f,BaseAttributes.Stamina));
+            ASC->ApplyGameplayEffectSpecToSelf(*Derived.Data.Get());
         }
     }
-
-    return false;
+    OnHealthChanged.Broadcast(GetCurrentHealth(),GetMaxHealth());
+    OnResourceChanged.Broadcast(Resource.Type,GetCurrentResource(),GetMaxResource());
 }
-
-void UKrerusAttributeComponent::TickComponent(
-    float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+float UKrerusAttributeComponent::GetCurrentHealth() const { auto* A=GetAttributes();return A ? A->GetHealth() : 0.f; }
+float UKrerusAttributeComponent::GetMaxHealth() const { auto* A=GetAttributes();return A ? A->GetMaxHealth() : 0.f; }
+bool UKrerusAttributeComponent::IsAlive() const { return GetCurrentHealth()>0.f; }
+FName UKrerusAttributeComponent::ResourceName() const
 {
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    switch(Resource.Type) { case EKrerusResourceType::Mana:return FName(TEXT("Mana"));case EKrerusResourceType::Energy:return FName(TEXT("Energy"));case EKrerusResourceType::Rage:return FName(TEXT("Rage"));default:return NAME_None; }
 }
-
-// Consume el recurso tradicional; los costes de habilidades GAS se resuelven por su propio circuito.
-bool UKrerusAttributeComponent::TryConsumeResource(float Amount)
+float UKrerusAttributeComponent::GetCurrentResource() const
 {
-    if (!FMath::IsFinite(Amount) || Amount <= 0.0f)
-    {
-        return false;
-    }
-
-    if (Resource.Type == EKrerusResourceType::None)
-    {
-        return false;
-    }
-
-    if (Resource.CurrentValue < Amount)
-    {
-        return false;
-    }
-
-    Resource.CurrentValue = FMath::Clamp(Resource.CurrentValue - Amount, 0.0f, Resource.MaxValue);
-    UE_LOG(LogTemp, Warning, TEXT("KRERUS: Recurso consumido: %.1f | Restante: %.1f / %.1f"), Amount,
-        Resource.CurrentValue, Resource.MaxValue);
-
-    OnResourceChanged.Broadcast(Resource.Type, Resource.CurrentValue, Resource.MaxValue);
-
-    return true;
+    auto* A=GetAttributes();if (!A)return 0.f;
+    switch(Resource.Type) { case EKrerusResourceType::Mana:return A->GetMana();case EKrerusResourceType::Energy:return A->GetEnergy();case EKrerusResourceType::Rage:return A->GetRage();default:return 0.f; }
 }
-
-void UKrerusAttributeComponent::RestoreResource(float Amount)
+float UKrerusAttributeComponent::GetMaxResource() const
 {
-    if (!FMath::IsFinite(Amount) || Amount <= 0.0f)
-    {
-        return;
-    }
-
-    const float PreviousValue = Resource.CurrentValue;
-
-    if (Resource.Type == EKrerusResourceType::None)
-    {
-        return;
-    }
-
-    Resource.CurrentValue = FMath::Clamp(Resource.CurrentValue + Amount, 0.0f, Resource.MaxValue);
-    UE_LOG(LogTemp, Warning, TEXT("KRERUS: Recurso recuperado: %.1f | Actual: %.1f / %.1f"), Amount,
-        Resource.CurrentValue, Resource.MaxValue);
-
-    if (PreviousValue != Resource.CurrentValue)
-    {
-        OnResourceChanged.Broadcast(Resource.Type, Resource.CurrentValue, Resource.MaxValue);
-    }
+    auto* A=GetAttributes();if (!A)return 0.f;
+    switch(Resource.Type) { case EKrerusResourceType::Mana:return A->GetMaxMana();case EKrerusResourceType::Energy:return A->GetMaxEnergy();case EKrerusResourceType::Rage:return A->GetMaxRage();default:return 0.f; }
 }
-
-bool UKrerusAttributeComponent::IsAlive() const
+bool UKrerusAttributeComponent::ApplyDelta(FName Name,float Amount)
 {
-    return CurrentHealth > 0.0f;
+    auto* ASC=GetASC();if(!ASC || !GetOwner()->HasAuthority() || Name.IsNone() || !FMath::IsFinite(Amount))return false;
+    auto Spec=ASC->MakeOutgoingSpec(UKrerusResourceDeltaEffect::StaticClass(),1.f,ASC->MakeEffectContext());if(!Spec.IsValid())return false;
+    for (const auto* N : {TEXT("Health"),TEXT("Mana"),TEXT("Energy"),TEXT("Rage")}) Spec.Data->SetSetByCallerMagnitude(FName(N),Name==FName(N)?Amount:0.f);
+    return ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get()).WasSuccessfullyApplied();
+}
+void UKrerusAttributeComponent::ApplyDamage(float Amount) { if (FMath::IsFinite(Amount) && Amount>0.f && IsAlive()) ApplyDelta(FName(TEXT("Health")),-Amount); }
+void UKrerusAttributeComponent::Heal(float Amount) { if (FMath::IsFinite(Amount) && Amount>0.f && IsAlive()) ApplyDelta(FName(TEXT("Health")),Amount); }
+bool UKrerusAttributeComponent::TryConsumeResource(float Amount) { return FMath::IsFinite(Amount) && Amount>0.f && GetCurrentResource()>=Amount && ApplyDelta(ResourceName(),-Amount); }
+void UKrerusAttributeComponent::RestoreResource(float Amount) { if (FMath::IsFinite(Amount) && Amount>0.f) ApplyDelta(ResourceName(),Amount); }
+FKrerusPrimaryAttributes UKrerusAttributeComponent::GetFinalAttributes() const
+{
+    FKrerusPrimaryAttributes V;auto* A=GetAttributes();
+    V.Strength=A?A->GetStrength():0.f;V.Agility=A?A->GetAgility():0.f;V.Intellect=A?A->GetIntellect():0.f;V.Stamina=A?A->GetStamina():0.f;return V;
+}
+FKrerusDerivedAttributes UKrerusAttributeComponent::GetDerivedAttributes() const
+{
+    FKrerusDerivedAttributes V;auto* A=GetAttributes();
+    if (A) {V.AttackPower=A->GetAttackPower();V.SpellPower=A->GetSpellPower();V.Armor=A->GetArmor();V.CriticalChance=A->GetCriticalChance();}return V;
+}
+FGuid UKrerusAttributeComponent::AddAttributeModifier(FKrerusAttributeModifier Modifier)
+{
+    auto* ASC=GetASC();if(!ASC || !GetOwner()->HasAuthority())return FGuid();
+    auto Spec=ASC->MakeOutgoingSpec(UKrerusAttributeBonusEffect::StaticClass(),1.f,ASC->MakeEffectContext());if(!Spec.IsValid())return FGuid();
+    if(!FMath::IsFinite(Modifier.Strength))return FGuid();
+    Spec.Data->SetSetByCallerMagnitude(FName(TEXT("Strength")),Modifier.Strength);
+    if(!FMath::IsFinite(Modifier.Agility))return FGuid();
+    Spec.Data->SetSetByCallerMagnitude(FName(TEXT("Agility")),Modifier.Agility);
+    if(!FMath::IsFinite(Modifier.Intellect))return FGuid();
+    Spec.Data->SetSetByCallerMagnitude(FName(TEXT("Intellect")),Modifier.Intellect);
+    if(!FMath::IsFinite(Modifier.Stamina))return FGuid();
+    Spec.Data->SetSetByCallerMagnitude(FName(TEXT("Stamina")),Modifier.Stamina);
+    if(!FMath::IsFinite(Modifier.AttackPower))return FGuid();
+    Spec.Data->SetSetByCallerMagnitude(FName(TEXT("AttackPower")),Modifier.AttackPower);
+    if(!FMath::IsFinite(Modifier.SpellPower))return FGuid();
+    Spec.Data->SetSetByCallerMagnitude(FName(TEXT("SpellPower")),Modifier.SpellPower);
+    if(!FMath::IsFinite(Modifier.Armor))return FGuid();
+    Spec.Data->SetSetByCallerMagnitude(FName(TEXT("Armor")),Modifier.Armor);
+    if(!FMath::IsFinite(Modifier.CriticalChance))return FGuid();
+    Spec.Data->SetSetByCallerMagnitude(FName(TEXT("CriticalChance")),Modifier.CriticalChance);
+    auto Handle=ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());if(!Handle.IsValid())return FGuid();
+    auto Id=FGuid::NewGuid();ModifierHandles.Add(Id,Handle);return Id;
+}
+bool UKrerusAttributeComponent::RemoveAttributeModifier(FGuid Id)
+{
+    auto* ASC=GetASC();auto* H=ModifierHandles.Find(Id);if(!ASC || !GetOwner()->HasAuthority() || !H)return false;
+    bool Result=ASC->RemoveActiveGameplayEffect(*H);ModifierHandles.Remove(Id);return Result;
+}
+void UKrerusAttributeComponent::OnGASChanged(const FOnAttributeChangeData& Data)
+{
+    if(Data.Attribute==UKrerusAttributeSet::GetHealthAttribute() || Data.Attribute==UKrerusAttributeSet::GetMaxHealthAttribute())
+        OnHealthChanged.Broadcast(GetCurrentHealth(),GetMaxHealth());
+    if(Data.Attribute==UKrerusAttributeSet::GetHealthAttribute() && Data.OldValue>0.f && Data.NewValue<=0.f)
+    {
+        if(GetOwner()->HasAuthority())
+        {
+            if(auto* C=GetOwner()->FindComponentByClass<UKrerusCombatComponent>())C->StopAutoAttack();
+            if(auto* C=GetOwner()->FindComponentByClass<UKrerusCombatStateComponent>())C->ClearCombatRelations();
+            if(auto* ASC=GetASC())ASC->CancelAllAbilities();
+        }
+        OnDeath.Broadcast();
+    }
+    OnResourceChanged.Broadcast(Resource.Type,GetCurrentResource(),GetMaxResource());
+    OnAttributesChanged.Broadcast(GetFinalAttributes());
+    OnDerivedAttributesChanged.Broadcast(GetDerivedAttributes());
 }

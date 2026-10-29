@@ -1,4 +1,5 @@
 #include "KrerusPlayerState.h"
+#include "KrerusAutoAttackAbility.h"
 #include "KrerusAttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/GameplayAbility.h"
@@ -30,6 +31,7 @@ UKrerusAttributeSet* AKrerusPlayerState::GetKrerusAttributeSet() const
 void AKrerusPlayerState::BeginPlay()
 {
     Super::BeginPlay();
+    if (HasAuthority() && AbilitySystemComponent) AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UKrerusAutoAttackAbility::StaticClass(),1));
 
     if (HasAuthority() && StartupAbilityClass && AbilitySystemComponent)
     {

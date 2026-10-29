@@ -13,7 +13,7 @@
 #include "KrerusStrikeAbility.h"
 #include "Abilities/GameplayAbility.h"
 
-// Conecta las acciones de Enhanced Input con cámara, movimiento, interacción y los dos circuitos de combate.
+// Conecta las acciones de Enhanced Input con cámara, movimiento, interacción y las habilidades GAS.
 void AKrerusCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);

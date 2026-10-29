@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "KrerusAttributeTypes.generated.h"
 
-// Atributos primarios del sistema tradicional, antes y después de aplicar modificadores.
+// Atributos primarios del configuracion inicial de GAS, antes y después de aplicar modificadores.
 USTRUCT(BlueprintType)
 struct FKrerusPrimaryAttributes
 {
@@ -58,7 +58,7 @@ public:
     float CriticalChance = 0.0f;
 };
 
-// Estadísticas calculadas por AttributeComponent; el autoataque consulta AttackPower.
+// Estadísticas calculadas por GAS; el autoataque consulta AttackPower de GAS.
 USTRUCT(BlueprintType)
 struct FKrerusDerivedAttributes
 {

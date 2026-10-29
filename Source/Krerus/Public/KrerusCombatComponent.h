@@ -7,13 +7,14 @@
 class AKrerusCharacter;
 class AKrerusEnemy;
 class UGameplayEffect;
+class UKrerusAutoAttackAbility;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAutoAttackHit, AActor*, Target, float, Damage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAutoAttackStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAutoAttackStopped);
 
 /**
- * Orquesta el autoataque del Character con temporizador, montaje e impacto.
+ * Interfaz de objetivo, configuracion y eventos del autoataque GAS; sin temporizador ni dano propio.
  * Cadencia e impacto en servidor; daño GAS y estado replicado al propietario.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -23,6 +24,11 @@ class KRERUS_API UKrerusCombatComponent : public UActorComponent
 
 public:
     UKrerusCombatComponent();
+    UKrerusAutoAttackAbility* GetAutoAttackAbility() const;
+    bool CanAttackTarget() const;
+    float GetAttackDamage() const;
+    TSubclassOf<UGameplayEffect> GetDamageEffectClass() const { return AutoAttackDamageEffectClass; }
+    void PublishAbilityState(bool bActive);
 
     UFUNCTION(BlueprintCallable, Category = "Combat")
     void SetCombatTarget(AKrerusEnemy* NewTarget);
@@ -63,7 +69,6 @@ public:
     void CancelPendingAutoAttackImpact();
 
 protected:
-    virtual void BeginPlay() override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     UFUNCTION()
     void OnRep_AutoAttacking();
@@ -91,20 +96,8 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|GAS")
     TSubclassOf<UGameplayEffect> AutoAttackDamageEffectClass;
 
-    double NextAttackTime = 0.0; // No se reinicia al cancelar: pausa/cambio de objetivo no eluden cadencia.
-    bool bAttackImpactConsumed = true;
     UPROPERTY(Replicated)
     bool bAutoAttackPaused = false;
-
-    UFUNCTION()
-    void OnCombatTargetDeath();
-
-    UFUNCTION()
-    void OnOwnerDeath();
-
-    FTimerHandle AutoAttackTimerHandle;
-
-    void PerformAutoAttack();
 
 private:
     bool IsTargetInRange(const AKrerusCharacter* PlayerCharacter, const AKrerusEnemy* Target) const;

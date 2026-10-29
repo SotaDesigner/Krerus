@@ -10,13 +10,14 @@ class UInputMappingContext;
 class UInputAction;
 class UKrerusAttributeComponent;
 class UKrerusCombatComponent;
+class UKrerusCombatStateComponent;
 class UAbilitySystemComponent;
 class AKrerusPlayerState;
 struct FInputActionValue;
 
 /**
  * Avatar jugable: coordina entrada, movimiento, cámara y autoataque.
- * El ASC pertenece a AKrerusPlayerState; AttributeComponent conserva los atributos del combate tradicional.
+ * El ASC pertenece a AKrerusPlayerState; AttributeComponent expone GAS a los Blueprints existentes sin valores independientes.
  */
 UCLASS()
 class KRERUS_API AKrerusCharacter : public ACharacter, public IAbilitySystemInterface
@@ -137,6 +138,12 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
     TObjectPtr<UKrerusCombatComponent> CombatComponent;
 
+    //UFUNCTION(BlueprintPure, Category = "Combat|State")
+    //UKrerusCombatStateComponent* GetCombatStateComponent() const;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat|State")
+    TObjectPtr<UKrerusCombatStateComponent> CombatStateComponent;
+
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Animation")
     TObjectPtr<UAnimMontage> AutoAttackMontage = nullptr;
 
@@ -175,6 +182,9 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Combat")
     UKrerusCombatComponent* GetCombatComponent() const;
+
+    UFUNCTION(BlueprintPure, Category = "Combat|State")
+    UKrerusCombatStateComponent* GetCombatStateComponent() const;
 
     UFUNCTION(BlueprintCallable, Category = "Combat|Animation")
     void PlayAutoAttackMontage(float AttackInterval);

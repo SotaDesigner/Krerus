@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "KrerusResourceTypes.generated.h"
 
-// Tipos del recurso tradicional; no representan el atributo Mana de GAS.
+// Selector del recurso GAS que expone la interfaz de Blueprint.
 UENUM(BlueprintType)
 enum class EKrerusResourceType : uint8
 {
@@ -13,7 +13,7 @@ enum class EKrerusResourceType : uint8
     Rage UMETA(DisplayName = "Rage")
 };
 
-// Estado del recurso que inicializa y consume UKrerusAttributeComponent.
+// Configuracion inicial del recurso GAS; CurrentValue ya no es un almacen de ejecucion.
 USTRUCT(BlueprintType)
 struct FKrerusResource
 {

@@ -5,6 +5,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "KrerusAttributeComponent.h"
 #include "KrerusCombatComponent.h"
+#include "KrerusCombatStateComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -45,6 +46,7 @@ AKrerusCharacter::AKrerusCharacter()
     AttributeComponent = CreateDefaultSubobject<UKrerusAttributeComponent>(TEXT("AttributeComponent"));
 
     CombatComponent = CreateDefaultSubobject<UKrerusCombatComponent>(TEXT("CombatComponent"));
+    CombatStateComponent = CreateDefaultSubobject<UKrerusCombatStateComponent>(TEXT("CombatStateComponent"));
 }
 
 void AKrerusCharacter::BeginPlay()
@@ -66,6 +68,7 @@ void AKrerusCharacter::BeginPlay()
         GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
         GetMesh()->bEnableUpdateRateOptimizations = false;
     }
+    if (AttributeComponent) AttributeComponent->InitializeGAS();
     CameraSystem->InitializeCamera(CameraBoom);
 }
 
@@ -114,7 +117,7 @@ void AKrerusCharacter::PlayAutoAttackMontage(float AttackInterval)
 
     const float MontageDuration = AutoAttackMontage->GetPlayLength();
 
-    const float SafeAttackInterval = FMath::Max(1.0f, AttackInterval);
+    const float SafeAttackInterval = FMath::Max(0.1f, AttackInterval);
 
     const float AnimationDuration = SafeAttackInterval * 0.9f;
 
@@ -223,6 +226,8 @@ void AKrerusCharacter::InitializeAbilitySystem()
     }
 
     ASC->InitAbilityActorInfo(KrerusPS, this);
+    if (!AttributeComponent) AttributeComponent=FindComponentByClass<UKrerusAttributeComponent>();
+    if (AttributeComponent) AttributeComponent->InitializeGAS();
 
     UE_LOG(LogTemp, Display, TEXT("KRERUS GAS: Inicializado | Owner: %s | Avatar: %s"),
         *GetNameSafe(ASC->GetOwnerActor()), *GetNameSafe(ASC->GetAvatarActor()));
@@ -297,4 +302,9 @@ void AKrerusCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)
     {
         StopSprint();
     }
+}
+
+UKrerusCombatStateComponent* AKrerusCharacter::GetCombatStateComponent() const
+{
+    return CombatStateComponent;
 }

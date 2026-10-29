@@ -1,0 +1,25 @@
+{
+  "FileVersion": 3,
+  "Version": 4,
+  "VersionName": "0.8.0",
+  "FriendlyName": "Codex Blueprint Bridge",
+  "Description": "Local, opt-in Blueprint inspection and guarded editing bridge for Codex.",
+  "Category": "Editor",
+  "CreatedBy": "Local developer",
+  "CanContainContent": false,
+  "IsBetaVersion": true,
+  "Installed": false,
+  "Plugins": [
+    {
+      "Name": "EnhancedInput",
+      "Enabled": true
+    }
+  ],
+  "Modules": [
+    {
+      "Name": "CodexBlueprintBridge",
+      "Type": "Editor",
+      "LoadingPhase": "PostEngineInit"
+    }
+  ]
+}
