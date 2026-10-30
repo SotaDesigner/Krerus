@@ -5,6 +5,7 @@
 #include "AbilitySystemInterface.h"
 #include "KrerusAttributeInitialization.h"
 #include "KrerusAbilitySystemComponent.h"
+#include "KrerusClassTypes.h"
 #include "KrerusCharacter.generated.h"
 
 class AKrerusEnemy;
@@ -37,7 +38,7 @@ public:
     UFUNCTION(Server, Reliable)
     void ServerSetAutoAttackPaused(bool bPaused);
     UFUNCTION(Server, Reliable)
-    void ServerActivateStrike(AKrerusEnemy* Target);
+    void ServerActivateAbilitySlot(int32 Slot, AKrerusEnemy* Target);
     UFUNCTION(NetMulticast, Reliable)
     void MulticastAutoAttackMontage(bool bPlay, float Interval);
 
@@ -134,6 +135,9 @@ protected:
 
     FRotator FreeMovementRotation = FRotator::ZeroRotator;
     bool bWasMoving = false;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Krerus|Class")
+    EKrerusClass CharacterClass = EKrerusClass::Warrior;
 
     UPROPERTY(EditDefaultsOnly, Category = "Krerus|Attributes")
     FKrerusAttributeInitialization InitialAttributes;

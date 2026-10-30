@@ -100,11 +100,44 @@ void UKrerusStrikeAbility::ActivateAbility(
         return;
     }
 
-    FGameplayEffectSpecHandle DamageSpec = MakeOutgoingGameplayEffectSpec(DamageEffectClass, 1.0f);
+    UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+    if (!IsValid(SourceASC))
+    {
+        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+        return;
+    }
+
+    FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+    Context.AddSourceObject(Character);
+    FGameplayEffectSpecHandle DamageSpec = SourceASC->MakeOutgoingSpec(
+        DamageEffectClass, GetAbilityLevel(), Context);
 
     if (DamageSpec.IsValid())
     {
+        DamageSpec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName(TEXT("Data.Damage"))),-FMath::Max(0.0f, BaseAbilityDamage));
+    }
+
+    if (DamageSpec.IsValid())
+    {
+        const float HealthBefore = TargetAttributes->GetHealth();
+        const float ArmorBefore = TargetAttributes->GetArmor();
+
+        UE_LOG(LogTemp, Warning,
+            TEXT("KRERUS STRIKE DEBUG: DamageEffect=%s | RawDamage=%.1f | HP antes=%.1f | Armor=%.1f"),
+            *GetNameSafe(DamageEffectClass.Get()),
+            BaseAbilityDamage,
+            HealthBefore,
+            ArmorBefore);
+
         const FActiveGameplayEffectHandle AppliedHandle = TargetASC->ApplyGameplayEffectSpecToSelf(*DamageSpec.Data.Get());
+
+        const float HealthAfter = TargetAttributes->GetHealth();
+
+        UE_LOG(LogTemp, Warning,
+            TEXT("KRERUS STRIKE DEBUG: Aplicado=%s | HP despues=%.1f | Daño real=%.1f"),
+            AppliedHandle.WasSuccessfullyApplied() ? TEXT("SI") : TEXT("NO"),
+            HealthAfter,
+            HealthBefore - HealthAfter);
 
         if (!AppliedHandle.WasSuccessfullyApplied())
         {
@@ -112,6 +145,27 @@ void UKrerusStrikeAbility::ActivateAbility(
 
             EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
             return;
+        }
+
+        // Aplicar el efecto adicional si está configurado
+        // y el objetivo sigue vivo tras recibir el daño.
+        if (AdditionalEffectClass && IsValid(Target) && !Target->IsCorpse() && TargetAttributes->GetHealth() > 0.0f)
+        {
+            FGameplayEffectSpecHandle AdditionalSpec = MakeOutgoingGameplayEffectSpec(AdditionalEffectClass, 1.0f);
+
+            if (AdditionalSpec.IsValid())
+            {
+                const FActiveGameplayEffectHandle AdditionalHandle = TargetASC->ApplyGameplayEffectSpecToSelf(*AdditionalSpec.Data.Get());
+
+                if (AdditionalHandle.WasSuccessfullyApplied())
+                {
+                    UE_LOG(LogTemp, Display, TEXT("KRERUS GAS: Efecto adicional aplicado a %s"), *GetNameSafe(Target));
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("KRERUS GAS: No se pudo aplicar el efecto adicional a %s"), *GetNameSafe(Target));                
+                }
+            }
         }
 
         // Registrar la relación si el enemigo sigue vivo.

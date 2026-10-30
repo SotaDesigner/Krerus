@@ -56,8 +56,7 @@ void AKrerusCharacter::BeginPlay()
     if (!IsValid(CombatComponent))
     {
         CombatComponent = FindComponentByClass<UKrerusCombatComponent>();
-        UE_LOG(LogTemp, Warning, TEXT("KRERUS COMBAT: Referencia de combate recuperada: %s"),
-            *GetNameSafe(CombatComponent.Get()));
+        UE_LOG(LogTemp, Warning, TEXT("KRERUS COMBAT: Referencia de combate recuperada: %s"),*GetNameSafe(CombatComponent.Get()));
     }
 
     Super::BeginPlay();
@@ -126,8 +125,14 @@ void AKrerusCharacter::Tick(float DeltaTime)
 // Punto de entrada del aviso de impacto de la animación; el componente valida y consume el golpe.
 void AKrerusCharacter::OnAutoAttackImpact()
 {
+    UE_LOG(LogTemp, Warning,
+        TEXT("[KRERUS DEBUG] Notify de impacto ejecutado. Autoridad: %s"),
+        HasAuthority() ? TEXT("SERVIDOR") : TEXT("CLIENTE"));
+
     if (!IsValid(CombatComponent))
     {
+        UE_LOG(LogTemp, Error,
+            TEXT("[KRERUS DEBUG] CombatComponent no disponible"));
         return;
     }
 
@@ -223,6 +228,14 @@ void AKrerusCharacter::PossessedBy(AController* NewController)
 {
     Super::PossessedBy(NewController);
 
+    if (HasAuthority())
+    {
+        if (AKrerusPlayerState* KrerusPS = GetPlayerState<AKrerusPlayerState>())
+        {
+            KrerusPS->InitializeCharacterClass(CharacterClass);
+        }
+    }
+
     InitializeAbilitySystem();
 }
 
@@ -298,29 +311,62 @@ void AKrerusCharacter::MulticastAutoAttackMontage_Implementation(bool bPlay, flo
     }
 }
 
-void AKrerusCharacter::ServerActivateStrike_Implementation(AKrerusEnemy* Target)
+void AKrerusCharacter::ServerActivateAbilitySlot_Implementation(
+    int32 Slot,
+    AKrerusEnemy* Target)
 {
-    if (!HasAuthority()) return;
-    if (!GetController() || !IsValid(Target) || Target->GetWorld() != GetWorld() || Target->IsCorpse()) return;
-    if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+    if (!HasAuthority() || !GetController())
     {
-        // El servidor usa una habilidad concedida; la clase/daño no proceden del cliente.
-        FGameplayAbilitySpecHandle StrikeHandle;
-        for (const FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+        return;
+    }
+
+    if (Slot < 1 || Slot > 12)
+    {
+        return;
+    }
+
+    UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+
+    if (!IsValid(ASC))
+    {
+        return;
+    }
+
+    FGameplayAbilitySpecHandle AbilityHandle;
+
+    for (const FGameplayAbilitySpec& Spec :
+        ASC->GetActivatableAbilities())
+    {
+        if (Spec.Ability && Spec.InputID == Slot)
         {
-            if (Spec.Ability && Spec.Ability->IsA(UKrerusStrikeAbility::StaticClass()))
-            {
-                StrikeHandle = Spec.Handle;
-                break;
-            }
-        }
-        if (StrikeHandle.IsValid())
-        {
-            StrikeTarget = Target;
-            ASC->TryActivateAbility(StrikeHandle);
-            StrikeTarget = nullptr;
+            AbilityHandle = Spec.Handle;
+            break;
         }
     }
+
+    if (!AbilityHandle.IsValid())
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("[Krerus GAS] No hay habilidad en la ranura %d"),
+            Slot);
+        return;
+    }
+
+    // Contexto de objetivo utilizado actualmente por Strike.
+    if (IsValid(Target) &&
+        Target->GetWorld() == GetWorld() &&
+        !Target->IsCorpse())
+    {
+        StrikeTarget = Target;
+    }
+    else
+    {
+        StrikeTarget = nullptr;
+    }
+
+    ASC->TryActivateAbility(AbilityHandle);
+
+    StrikeTarget = nullptr;
 }
 
 void AKrerusCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)

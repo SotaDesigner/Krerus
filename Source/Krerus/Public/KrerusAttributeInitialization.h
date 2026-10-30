@@ -18,6 +18,9 @@ struct FKrerusAttributeInitialization
     float Intellect = 10.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float BaseArmor = 50.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Stamina = 10.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)

@@ -9,6 +9,7 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "NativeGameplayTags.h"
 #include "Engine/World.h"
+#include "GameplayEffect.h"
 
 UE_DEFINE_GAMEPLAY_TAG_STATIC(TAG_KrerusAutoAttackImpact,"Event.Krerus.AutoAttack.Impact");
 UKrerusAutoAttackAbility::UKrerusAutoAttackAbility()
@@ -19,19 +20,33 @@ UKrerusAutoAttackAbility::UKrerusAutoAttackAbility()
 void UKrerusAutoAttackAbility::ActivateAbility(const FGameplayAbilitySpecHandle H,const FGameplayAbilityActorInfo* Info,const FGameplayAbilityActivationInfo Activation,const FGameplayEventData* Event)
 {
     auto* C=Info?Cast<AKrerusCharacter>(Info->AvatarActor.Get()):nullptr;
+
     auto* Comp=C?C->GetCombatComponent():nullptr;
+
     if(!C || !C->HasAuthority() || !Comp || !Comp->CanAttackTarget() || !Comp->GetDamageEffectClass() || !CommitAbility(H,Info,Activation))
-    { EndAbility(H,Info,Activation,true,true);return; }
+    {
+        EndAbility(H,Info,Activation,true,true);return;
+    }
+
     Combat=Comp;Target=Comp->GetCombatTarget();TargetASC=Target->GetAbilitySystemComponent();
+    
     if(!TargetASC.IsValid()) {EndAbility(H,Info,Activation,true,true);return;}
+    
     TargetASC->GetGameplayAttributeValueChangeDelegate(UKrerusAttributeSet::GetHealthAttribute()).AddUObject(this,&UKrerusAutoAttackAbility::OnHealthChanged);
+    
     Info->AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UKrerusAttributeSet::GetHealthAttribute()).AddUObject(this,&UKrerusAutoAttackAbility::OnHealthChanged);
+    
     auto* Impact=UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this,TAG_KrerusAutoAttackImpact,nullptr,false,true);
+    
     Impact->EventReceived.AddDynamic(this,&UKrerusAutoAttackAbility::OnImpact);Impact->ReadyForActivation();
+    
     Comp->PublishAbilityState(true);
+    
     NextSwingTime=FMath::Max(NextSwingTime,double(GetWorld()->GetTimeSeconds())+Comp->GetAttackInterval());
+    
     Schedule(float(NextSwingTime-GetWorld()->GetTimeSeconds()));
 }
+
 void UKrerusAutoAttackAbility::Schedule(float Delay)
 {
     if(!IsActive())return;
@@ -73,6 +88,33 @@ void UKrerusAutoAttackAbility::OnImpact(FGameplayEventData Payload)
     auto* ASC=GetAbilitySystemComponentFromActorInfo();auto* EnemyASC=TargetASC.Get();auto* Enemy=Target.Get();
     const float Damage=Comp->GetAttackDamage();
     if(!ASC || !EnemyASC || !Enemy || !FMath::IsFinite(Damage) || Damage<=0.f)return;
+    if (OnHitResourceEffectClass)
+    {
+        FGameplayEffectSpecHandle ResourceSpec =
+            ASC->MakeOutgoingSpec(
+                OnHitResourceEffectClass,
+                GetAbilityLevel(),
+                ASC->MakeEffectContext()
+            );
+
+        if (ResourceSpec.IsValid())
+        {
+            const FActiveGameplayEffectHandle ResourceHandle =
+                ASC->ApplyGameplayEffectSpecToSelf(*ResourceSpec.Data.Get());
+
+            const UKrerusAttributeSet* Attributes =
+                ASC->GetSet<UKrerusAttributeSet>();
+
+            if (Attributes)
+            {
+                UE_LOG(LogTemp, Warning,
+                    TEXT("KRERUS RAGE: Jugador=%s | Ira actual=%.1f | Efecto aplicado=%s"),
+                    *GetNameSafe(C),
+                    Attributes->GetRage(),
+                    ResourceHandle.WasSuccessfullyApplied() ? TEXT("SI") : TEXT("NO"));
+            }
+        }
+    }
     auto Context=ASC->MakeEffectContext();Context.AddSourceObject(C);
     auto Spec=ASC->MakeOutgoingSpec(Comp->GetDamageEffectClass(),GetAbilityLevel(),Context);if(!Spec.IsValid())return;
     Spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName(TEXT("Data.Damage"))),-Damage);

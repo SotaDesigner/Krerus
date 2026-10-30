@@ -70,12 +70,12 @@ bool UKrerusAbilitySystemComponent::InitializeAttributes(const FKrerusAttributeI
 
 	Init.Data->SetSetByCallerMagnitude(FName(TEXT("Stamina")),FMath::Max(0.f, Config.Stamina));
 
+	Init.Data->SetSetByCallerMagnitude(FName(TEXT("Armor")), FMath::Max(0.f, Config.BaseArmor));
+
 	// Estadísticas derivadas: valores base.
 	Init.Data->SetSetByCallerMagnitude(FName(TEXT("AttackPower")), 0.f);
 	
 	Init.Data->SetSetByCallerMagnitude(FName(TEXT("SpellPower")), 0.f);
-
-	Init.Data->SetSetByCallerMagnitude(FName(TEXT("Armor")), 0.f);
 
 	Init.Data->SetSetByCallerMagnitude(FName(TEXT("CriticalChance")), 0.f);
 

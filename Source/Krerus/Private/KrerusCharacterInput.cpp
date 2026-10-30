@@ -277,11 +277,15 @@ void AKrerusCharacter::OnAutoAttack()
     KrerusController->ToggleAutoAttack();
 }
 
-// Busca la instancia concedida de Strike en el ASC del PlayerState y solicita su activación por Handle.
+// Activa la habilidad equipada en la ranura 1.
 void AKrerusCharacter::ActivateStrike()
 {
-    if (AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController()))
+    if (AKrerusPlayerController* PC =
+        Cast<AKrerusPlayerController>(GetController()))
     {
-        ServerActivateStrike(Cast<AKrerusEnemy>(PC->GetSelectedNPC()));
+        ServerActivateAbilitySlot(
+            1,
+            Cast<AKrerusEnemy>(PC->GetSelectedNPC())
+        );
     }
 }

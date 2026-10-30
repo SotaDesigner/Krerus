@@ -6,6 +6,7 @@ class UKrerusCombatComponent;
 class AKrerusEnemy;
 class UAbilityTask_WaitDelay;
 class UAbilitySystemComponent;
+class UGameplayEffect;
 struct FOnAttributeChangeData;
 
 /** One authoritative GAS ability owns the entire autoattack lifetime and its tasks. */
@@ -22,6 +23,8 @@ public:
 protected:
     virtual void ActivateAbility(const FGameplayAbilitySpecHandle H,const FGameplayAbilityActorInfo* Info,const FGameplayAbilityActivationInfo Activation,const FGameplayEventData* Event) override;
     virtual void EndAbility(const FGameplayAbilitySpecHandle H,const FGameplayAbilityActorInfo* Info,const FGameplayAbilityActivationInfo Activation,bool bReplicate,bool bCancelled) override;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Combat|Resources")
+    TSubclassOf<UGameplayEffect> OnHitResourceEffectClass;
 private:
     UFUNCTION() void TrySwing();
     UFUNCTION() void OnImpact(FGameplayEventData Payload);

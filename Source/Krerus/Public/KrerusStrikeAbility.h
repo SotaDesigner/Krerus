@@ -26,5 +26,11 @@ protected:
     TSubclassOf<UGameplayEffect> DamageEffectClass;
 
     UPROPERTY(EditDefaultsOnly, Category = "Krerus|Combat")
+    TSubclassOf<UGameplayEffect> AdditionalEffectClass;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Combat")
+    float BaseAbilityDamage = 15.0f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Krerus|Combat")
     float AbilityRange = 600.0f;
 };

@@ -3,6 +3,9 @@
 #include "KrerusGASEffects.h"
 #include "AbilitySystemGlobals.h"
 #include "AbilitySystemComponent.h"
+#include "KrerusPlayerState.h"
+#include "KrerusClassTypes.h"
+#include "GameFramework/Pawn.h"
 
 UKrerusAttributeComponent::UKrerusAttributeComponent() { PrimaryComponentTick.bCanEverTick=false; }
 UAbilitySystemComponent* UKrerusAttributeComponent::GetASC() const { return UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetOwner()); }
@@ -12,23 +15,59 @@ float UKrerusAttributeComponent::GetCurrentHealth() const { auto* A=GetAttribute
 float UKrerusAttributeComponent::GetMaxHealth() const { auto* A=GetAttributes();return A ? A->GetMaxHealth() : 0.f; }
 bool UKrerusAttributeComponent::IsAlive() const { return GetCurrentHealth()>0.f; }
 
-FName UKrerusAttributeComponent::ResourceName() const
+EKrerusResourceType UKrerusAttributeComponent::GetResourceType() const
 {
-    switch(Resource.Type) { case EKrerusResourceType::Mana:return FName(TEXT("Mana"));case EKrerusResourceType::Energy:return FName(TEXT("Energy"));case EKrerusResourceType::Rage:return FName(TEXT("Rage"));default:return NAME_None; }
+    const APawn* Pawn = Cast<APawn>(GetOwner());
+
+    if (!Pawn)
+    {
+        return EKrerusResourceType::None;
+    }
+
+    const AKrerusPlayerState* PS = Pawn->GetPlayerState<AKrerusPlayerState>();
+
+    if (!PS)
+    {
+        return EKrerusResourceType::None;
+    }
+
+    return GetKrerusClassResource(PS->GetCharacterClass());
 }
 
 float UKrerusAttributeComponent::GetCurrentResource() const
 {
-    auto* A=GetAttributes();if (!A)return 0.f;
-    switch(Resource.Type) { case EKrerusResourceType::Mana:return A->GetMana();case EKrerusResourceType::Energy:return A->GetEnergy();case EKrerusResourceType::Rage:return A->GetRage();default:return 0.f; }
+    auto* A=GetAttributes();
+    if (!A)return 0.f;
+    switch(GetResourceType()) 
+    { 
+        case EKrerusResourceType::Mana:
+            return A->GetMana();
+        case EKrerusResourceType::Energy:
+            return A->GetEnergy();
+        case EKrerusResourceType::Rage:
+            return A->GetRage();
+        default:
+            return 0.f;
+    }
 }
 
 float UKrerusAttributeComponent::GetMaxResource() const
 {
-    auto* A=GetAttributes();if (!A)return 0.f;
-    switch(Resource.Type) { case EKrerusResourceType::Mana:return A->GetMaxMana();case EKrerusResourceType::Energy:return A->GetMaxEnergy();case EKrerusResourceType::Rage:return A->GetMaxRage();default:return 0.f; }
+    auto* A=GetAttributes();
+    if (!A)return 0.f;
+    switch(GetResourceType()) 
+    { 
+        case EKrerusResourceType::Mana:
+            return A->GetMaxMana();
+        case EKrerusResourceType::Energy:
+            return A->GetMaxEnergy();
+        case EKrerusResourceType::Rage:
+            return A->GetMaxRage();
+        default:
+            return 0.f; 
+    }
 }
-
+  
 bool UKrerusAttributeComponent::ApplyDelta(FName Name,float Amount)
 {
     auto* ASC=GetASC();if(!ASC || !GetOwner()->HasAuthority() || Name.IsNone() || !FMath::IsFinite(Amount))return false;
@@ -82,4 +121,22 @@ bool UKrerusAttributeComponent::RemoveAttributeModifier(FGuid Id)
 {
     auto* ASC=GetASC();auto* H=ModifierHandles.Find(Id);if(!ASC || !GetOwner()->HasAuthority() || !H)return false;
     bool Result=ASC->RemoveActiveGameplayEffect(*H);ModifierHandles.Remove(Id);return Result;
+}
+
+FName UKrerusAttributeComponent::ResourceName() const
+{
+    switch (GetResourceType())
+    {
+    case EKrerusResourceType::Mana:
+        return TEXT("Mana");
+
+    case EKrerusResourceType::Energy:
+        return TEXT("Energy");
+
+    case EKrerusResourceType::Rage:
+        return TEXT("Rage");
+
+    default:
+        return NAME_None;
+    }
 }
