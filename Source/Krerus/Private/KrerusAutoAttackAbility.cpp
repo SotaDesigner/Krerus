@@ -107,7 +107,7 @@ void UKrerusAutoAttackAbility::OnImpact(FGameplayEventData Payload)
 
             if (Attributes)
             {
-                UE_LOG(LogTemp, Warning,
+                UE_LOG(LogTemp, Verbose,
                     TEXT("KRERUS RAGE: Jugador=%s | Ira actual=%.1f | Efecto aplicado=%s"),
                     *GetNameSafe(C),
                     Attributes->GetRage(),

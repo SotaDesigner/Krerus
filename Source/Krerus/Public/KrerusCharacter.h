@@ -164,6 +164,9 @@ protected:
     UFUNCTION()
     void OnAutoAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
+    // Generation of the current swing; stale montage callbacks cannot invalidate it.
+    uint64 AutoAttackMontageGeneration = 0;
+
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
     void StartSprint();

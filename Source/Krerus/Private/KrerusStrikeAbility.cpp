@@ -122,7 +122,7 @@ void UKrerusStrikeAbility::ActivateAbility(
         const float HealthBefore = TargetAttributes->GetHealth();
         const float ArmorBefore = TargetAttributes->GetArmor();
 
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTemp, Verbose,
             TEXT("KRERUS STRIKE DEBUG: DamageEffect=%s | RawDamage=%.1f | HP antes=%.1f | Armor=%.1f"),
             *GetNameSafe(DamageEffectClass.Get()),
             BaseAbilityDamage,
@@ -133,7 +133,7 @@ void UKrerusStrikeAbility::ActivateAbility(
 
         const float HealthAfter = TargetAttributes->GetHealth();
 
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogTemp, Verbose,
             TEXT("KRERUS STRIKE DEBUG: Aplicado=%s | HP despues=%.1f | Daño real=%.1f"),
             AppliedHandle.WasSuccessfullyApplied() ? TEXT("SI") : TEXT("NO"),
             HealthAfter,
@@ -159,7 +159,7 @@ void UKrerusStrikeAbility::ActivateAbility(
 
                 if (AdditionalHandle.WasSuccessfullyApplied())
                 {
-                    UE_LOG(LogTemp, Display, TEXT("KRERUS GAS: Efecto adicional aplicado a %s"), *GetNameSafe(Target));
+                    UE_LOG(LogTemp, Verbose, TEXT("KRERUS GAS: Efecto adicional aplicado a %s"), *GetNameSafe(Target));
                 }
                 else
                 {

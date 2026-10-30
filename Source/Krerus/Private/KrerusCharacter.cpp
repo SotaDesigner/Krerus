@@ -125,7 +125,7 @@ void AKrerusCharacter::Tick(float DeltaTime)
 // Punto de entrada del aviso de impacto de la animación; el componente valida y consume el golpe.
 void AKrerusCharacter::OnAutoAttackImpact()
 {
-    UE_LOG(LogTemp, Warning,
+    UE_LOG(LogTemp, Verbose,
         TEXT("[KRERUS DEBUG] Notify de impacto ejecutado. Autoridad: %s"),
         HasAuthority() ? TEXT("SERVIDOR") : TEXT("CLIENTE"));
 
@@ -162,6 +162,9 @@ void AKrerusCharacter::PlayAutoAttackMontage(float AttackInterval)
         return;
     }
 
+    // A previous montage can finish blending out after the next swing starts.
+    // Advance before Montage_Play, which may synchronously interrupt that instance.
+    const uint64 Generation = ++AutoAttackMontageGeneration;
     const float PlayedDuration = AnimInstance->Montage_Play(AutoAttackMontage, PlayRate);
 
     if (PlayedDuration <= 0.0f)
@@ -171,7 +174,14 @@ void AKrerusCharacter::PlayAutoAttackMontage(float AttackInterval)
 
     FOnMontageEnded MontageEndedDelegate;
 
-    MontageEndedDelegate.BindUObject(this, &AKrerusCharacter::OnAutoAttackMontageEnded);
+    MontageEndedDelegate.BindWeakLambda(this,
+        [this, Generation](UAnimMontage* Montage, bool bInterrupted)
+        {
+            if (Generation == AutoAttackMontageGeneration)
+            {
+                OnAutoAttackMontageEnded(Montage, bInterrupted);
+            }
+        });
 
     AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, AutoAttackMontage);
 }
