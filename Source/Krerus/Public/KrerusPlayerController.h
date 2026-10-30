@@ -21,6 +21,7 @@ public:
     // Compatibilidad con mapas que todavia usen el PlayerController anterior.
     static void ApplyMouseCapture(APlayerController* PC, bool bIsCameraControlActive, bool bIsFreeCameraActive);
 
+    UFUNCTION(BlueprintPure, Category = "Targeting")
     AKrerusNPC* GetSelectedNPC() const;
 
     void SelectEnemyAtScreenPosition(const FVector2D& ScreenPosition);

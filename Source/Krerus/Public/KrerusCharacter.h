@@ -41,7 +41,7 @@ public:
     void ServerActivateAbilitySlot(int32 Slot, AKrerusEnemy* Target);
     UFUNCTION(NetMulticast, Reliable)
     void MulticastAutoAttackMontage(bool bPlay, float Interval);
-
+    UFUNCTION(BlueprintPure, Category = "Krerus|Combat|Targeting")
     AKrerusEnemy* GetStrikeTarget() const { return StrikeTarget.Get(); }
 
 private:
