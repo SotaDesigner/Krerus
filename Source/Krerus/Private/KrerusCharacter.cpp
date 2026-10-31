@@ -13,6 +13,8 @@
 #include "AbilitySystemComponent.h"
 #include "KrerusEnemy.h"
 #include "KrerusStrikeAbility.h"
+#include "KrerusAbilityMovementComponent.h"
+#include "GameplayEffect.h"
 
 AKrerusCharacter::AKrerusCharacter()
 {
@@ -47,6 +49,7 @@ AKrerusCharacter::AKrerusCharacter()
 
     CombatComponent = CreateDefaultSubobject<UKrerusCombatComponent>(TEXT("CombatComponent"));
     CombatStateComponent = CreateDefaultSubobject<UKrerusCombatStateComponent>(TEXT("CombatStateComponent"));
+    AbilityMovementComponent = CreateDefaultSubobject<UKrerusAbilityMovementComponent>(TEXT("AbilityMovementComponent"));
 }
 
 void AKrerusCharacter::BeginPlay()
@@ -281,6 +284,22 @@ void AKrerusCharacter::InitializeAbilitySystem()
     if (HasAuthority())
     {
         InitializeCharacterAttributes();
+
+        switch (CharacterClass)
+        {
+        case EKrerusClass::Rogue:
+            if (EnergyRegenerationEffectClass) { RecourseRegenerationFuntion(ASC,EnergyRegenerationEffectClass); }
+            break;
+        case EKrerusClass::Mage:
+        case EKrerusClass::Paladin:
+        case EKrerusClass::Druid:
+            if (ManaRegenerationEffectClass) { RecourseRegenerationFuntion(ASC, ManaRegenerationEffectClass); }
+            break;
+        case EKrerusClass::Warrior:
+            if (RageChillEffectClass) { RecourseRegenerationFuntion(ASC, RageChillEffectClass); }
+        default:
+            break;
+        }
     }
 
     UE_LOG(LogTemp, Display, TEXT("KRERUS GAS: Inicializado | Owner: %s | Avatar: %s"), *GetNameSafe(ASC->GetOwnerActor()), *GetNameSafe(ASC->GetAvatarActor()));
@@ -394,4 +413,96 @@ void AKrerusCharacter::ServerSetSprinting_Implementation(bool bNewSprinting)
 UKrerusCombatStateComponent* AKrerusCharacter::GetCombatStateComponent() const
 {
     return CombatStateComponent;
+}
+
+void AKrerusCharacter::RecourseRegenerationFuntion(UAbilitySystemComponent* ASC, TSubclassOf<UGameplayEffect> EffectClass)
+{
+    if (!IsValid(ASC) || !EffectClass || !HasAuthority())
+    {
+        return;
+    }
+
+    // Comprobamos si este efecto ya está activo.
+    const FGameplayEffectQuery Query;
+
+    // Evitamos usar una consulta vacía para decidir
+    // si nuestro efecto específico está aplicado.
+    bool bRegenerationAlreadyActive = false;
+
+    for (const FActiveGameplayEffectHandle& Handle : ASC->GetActiveEffects(Query))
+    {
+        const FActiveGameplayEffect* ActiveEffect = ASC->GetActiveGameplayEffect(Handle);
+
+        if (ActiveEffect && ActiveEffect->Spec.Def && ActiveEffect->Spec.Def->GetClass() == EffectClass.Get())
+        {
+            bRegenerationAlreadyActive = true;
+            break;
+        }
+    }
+
+    if (!bRegenerationAlreadyActive)
+    {
+        FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+
+        FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(EffectClass, 1.0f, Context);
+
+        if (Spec.IsValid())
+        {
+            const FActiveGameplayEffectHandle AppliedHandle = ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+
+            UE_LOG(LogTemp, Display, TEXT("KRERUS GAS: Regeneracion %s - %s"), *GetNameSafe(EffectClass.Get()), AppliedHandle.WasSuccessfullyApplied() ? TEXT("ACTIVADA") : TEXT("ERROR"));
+        }
+    }
+}
+
+void AKrerusCharacter::RemoveRegenerationFuntion(UAbilitySystemComponent* ASC, TSubclassOf<UGameplayEffect> EffectClass)
+{
+    if (!IsValid(ASC) || !EffectClass || !HasAuthority())
+    {
+        return;
+    }
+
+    const FGameplayEffectQuery Query;
+
+    // Evitamos usar una consulta vacía para decidir
+    // si nuestro efecto específico está aplicado.
+    bool bRegenerationAlreadyActive = false;
+
+    for (const FActiveGameplayEffectHandle& Handle : ASC->GetActiveEffects(Query))
+    {
+        const FActiveGameplayEffect* ActiveEffect = ASC->GetActiveGameplayEffect(Handle);
+
+        if (ActiveEffect && ActiveEffect->Spec.Def && ActiveEffect->Spec.Def->GetClass() == EffectClass.Get())
+        {
+            bRegenerationAlreadyActive = true;
+            ASC->RemoveActiveGameplayEffectBySourceEffect(EffectClass, ASC);
+            break;
+        }
+    }    
+}
+
+void AKrerusCharacter::UpdateRageFuntion(bool IsCombat)
+{
+    if (!HasAuthority() || CharacterClass == EKrerusClass::Warrior)
+    {
+        return;
+    }
+
+    UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+
+    if (!IsValid(ASC))
+    {
+        return;
+    }
+
+    if (IsCombat)
+    {
+        RemoveRegenerationFuntion(ASC, RageChillEffectClass);
+        RecourseRegenerationFuntion(ASC, RageBattleEffectClass);
+    }
+    else
+    {
+        RemoveRegenerationFuntion(ASC, RageBattleEffectClass);
+        RecourseRegenerationFuntion(ASC, RageChillEffectClass);
+    }
 }

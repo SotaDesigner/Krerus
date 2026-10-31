@@ -3,6 +3,7 @@
 
 #include "KrerusCombatStateComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "KrerusCharacter.h"
 
 // Sets default values for this component's properties
 UKrerusCombatStateComponent::UKrerusCombatStateComponent()
@@ -95,6 +96,11 @@ void UKrerusCombatStateComponent::UpdateCombatState()
 	}
 
 	bIsInCombat = bNewCombatState;
+
+	if (AKrerusCharacter* Character = Cast<AKrerusCharacter>(Owner))
+	{
+		Character->UpdateRageFuntion(bIsInCombat);
+	}
 
 	OnRep_IsInCombat();
 }

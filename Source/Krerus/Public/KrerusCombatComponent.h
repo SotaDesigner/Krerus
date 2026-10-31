@@ -8,6 +8,7 @@ class AKrerusCharacter;
 class AKrerusEnemy;
 class UGameplayEffect;
 class UKrerusAutoAttackAbility;
+class UAbilitySystemComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAutoAttackHit, AActor*, Target, float, Damage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAutoAttackStarted);
@@ -27,6 +28,15 @@ public:
     UKrerusAutoAttackAbility* GetAutoAttackAbility() const;
     bool CanAttackTarget() const;
     float GetAttackDamage() const;
+
+    // Temporary rule for testing weapons: the unarmed range (200) remains melee.
+    UFUNCTION(BlueprintPure, Category = "Combat|AutoAttack")
+    bool UsesProjectileAttack() const { return FMath::IsFinite(AttackRange) && AttackRange > 200.f; }
+
+    // Shared server-only resolution for melee and projectile hits.
+    bool ResolveAutoAttackHit(AKrerusEnemy* Enemy, float Damage,
+        UAbilitySystemComponent* SourceASC, TSubclassOf<UGameplayEffect> DamageEffect,
+        TSubclassOf<UGameplayEffect> ResourceEffect, float AbilityLevel);
     TSubclassOf<UGameplayEffect> GetDamageEffectClass() const { return AutoAttackDamageEffectClass; }
     void PublishAbilityState(bool bActive);
 

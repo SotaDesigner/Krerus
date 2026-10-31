@@ -5,6 +5,8 @@
 #include "KrerusAutoAttackAbility.h"
 #include "AbilitySystemComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "KrerusCombatStateComponent.h"
+#include "GameplayEffect.h"
 
 UKrerusCombatComponent::UKrerusCombatComponent() { PrimaryComponentTick.bCanEverTick=false;SetIsReplicatedByDefault(true); }
 void UKrerusCombatComponent::EndPlay(const EEndPlayReason::Type Reason) { if(GetOwner()->HasAuthority())StopAutoAttack();Super::EndPlay(Reason); }
@@ -80,4 +82,40 @@ void UKrerusCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
     DOREPLIFETIME_CONDITION(UKrerusCombatComponent,CombatTarget,COND_OwnerOnly);
     DOREPLIFETIME_CONDITION(UKrerusCombatComponent,bIsAutoAttacking,COND_OwnerOnly);
     DOREPLIFETIME_CONDITION(UKrerusCombatComponent,bAutoAttackPaused,COND_OwnerOnly);
+}
+
+
+bool UKrerusCombatComponent::ResolveAutoAttackHit(AKrerusEnemy* Enemy, float Damage,
+    UAbilitySystemComponent* SourceASC, TSubclassOf<UGameplayEffect> DamageEffect,
+    TSubclassOf<UGameplayEffect> ResourceEffect, float AbilityLevel)
+{
+    auto* Character = Cast<AKrerusCharacter>(GetOwner());
+    const auto* Attributes = IsValid(SourceASC) ? SourceASC->GetSet<UKrerusAttributeSet>() : nullptr;
+    auto* EnemyASC = IsValid(Enemy) ? Enemy->GetAbilitySystemComponent() : nullptr;
+    const auto* EnemyAttributes = IsValid(EnemyASC) ? EnemyASC->GetSet<UKrerusAttributeSet>() : nullptr;
+    if (!Character || !Character->HasAuthority() || SourceASC != Character->GetAbilitySystemComponent()
+        || !Attributes || Attributes->GetHealth() <= 0.f || !EnemyAttributes
+        || EnemyAttributes->GetHealth() <= 0.f || Enemy->IsCorpse()
+        || Enemy->GetWorld() != GetWorld() || !DamageEffect || !FMath::IsFinite(Damage) || Damage <= 0.f)
+    {
+        return false;
+    }
+
+    FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+    Context.AddSourceObject(Character);
+    auto Spec = SourceASC->MakeOutgoingSpec(DamageEffect, AbilityLevel, Context);
+    if (!Spec.IsValid()) return false;
+    Spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName(TEXT("Data.Damage"))), -Damage);
+    if (!SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), EnemyASC).WasSuccessfullyApplied()) return false;
+
+    // Reward an accepted hit, including lethal hits. Never reward a blocked/failed effect.
+    if (ResourceEffect && IsValid(SourceASC))
+    {
+        auto ResourceSpec = SourceASC->MakeOutgoingSpec(ResourceEffect, AbilityLevel, SourceASC->MakeEffectContext());
+        if (ResourceSpec.IsValid()) SourceASC->ApplyGameplayEffectSpecToSelf(*ResourceSpec.Data.Get());
+    }
+    if (IsValid(Enemy) && !Enemy->IsCorpse())
+        if (auto* State = Character->GetCombatStateComponent()) State->AddCombatRelation(Enemy);
+    if (IsValid(Enemy)) OnAutoAttackHit.Broadcast(Enemy, Damage);
+    return true;
 }

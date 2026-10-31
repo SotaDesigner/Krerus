@@ -4,6 +4,7 @@
 #include "KrerusCharacter.h"
 #include "KrerusEnemy.h"
 #include "KrerusAttributeSet.h"
+#include "KrerusProjectile.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
@@ -17,6 +18,7 @@ UKrerusAutoAttackAbility::UKrerusAutoAttackAbility()
     InstancingPolicy=EGameplayAbilityInstancingPolicy::InstancedPerActor;
     NetExecutionPolicy=EGameplayAbilityNetExecutionPolicy::ServerOnly;
 }
+
 void UKrerusAutoAttackAbility::ActivateAbility(const FGameplayAbilitySpecHandle H,const FGameplayAbilityActorInfo* Info,const FGameplayAbilityActivationInfo Activation,const FGameplayEventData* Event)
 {
     auto* C=Info?Cast<AKrerusCharacter>(Info->AvatarActor.Get()):nullptr;
@@ -79,52 +81,101 @@ void UKrerusAutoAttackAbility::SendImpactEvent()
     FGameplayEventData Event;Event.EventTag=TAG_KrerusAutoAttackImpact;Event.Instigator=GetAvatarActorFromActorInfo();Event.Target=Target.Get();
     if(auto* ASC=GetAbilitySystemComponentFromActorInfo())ASC->HandleGameplayEvent(TAG_KrerusAutoAttackImpact,&Event);
 }
+
 void UKrerusAutoAttackAbility::OnImpact(FGameplayEventData Payload)
 {
-    auto* Comp=Combat.Get();auto* C=Cast<AKrerusCharacter>(GetAvatarActorFromActorInfo());
-    if(!IsActive() || bImpactConsumed || !Comp || !C || !C->HasAuthority() || !C->IsAutoAttackMontagePlaying())return;
-    bImpactConsumed=true;
-    if(Comp->IsAutoAttackPaused() || !Comp->CanAttackTarget() || Comp->GetCombatTarget()!=Target.Get())return;
-    auto* ASC=GetAbilitySystemComponentFromActorInfo();auto* EnemyASC=TargetASC.Get();auto* Enemy=Target.Get();
-    const float Damage=Comp->GetAttackDamage();
-    if(!ASC || !EnemyASC || !Enemy || !FMath::IsFinite(Damage) || Damage<=0.f)return;
-    if (OnHitResourceEffectClass)
+    auto* Comp = Combat.Get();
+    auto* C = Cast<AKrerusCharacter>(GetAvatarActorFromActorInfo());
+
+    if (!IsActive() || bImpactConsumed || !Comp || !C || !C->HasAuthority() || !C->IsAutoAttackMontagePlaying())
     {
-        FGameplayEffectSpecHandle ResourceSpec =
-            ASC->MakeOutgoingSpec(
-                OnHitResourceEffectClass,
-                GetAbilityLevel(),
-                ASC->MakeEffectContext()
+        return;
+    }
+
+    bImpactConsumed = true;
+
+    if (Comp->IsAutoAttackPaused() || !Comp->CanAttackTarget() || Comp->GetCombatTarget() != Target.Get()) 
+    {
+        return;
+    }
+
+    UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+
+    UAbilitySystemComponent* EnemyASC = TargetASC.Get();
+
+    AKrerusEnemy* Enemy = Target.Get();
+
+    const float Damage = Comp->GetAttackDamage();
+
+    TSubclassOf<UGameplayEffect> DamageEffectClass = Comp->GetDamageEffectClass();
+
+    if (!IsValid(SourceASC) || !IsValid(EnemyASC) || !IsValid(Enemy) || !DamageEffectClass || !FMath::IsFinite(Damage) || Damage <= 0.f)
+    {
+        return;
+    }
+
+    // -------------------------------------------------
+    // ATAQUE A DISTANCIA
+    // -------------------------------------------------
+
+    if (Comp->UsesProjectileAttack())
+    {
+        if (!ProjectileClass)
+        {
+            UE_LOG(
+                LogTemp,
+                Warning,
+                TEXT("KRERUS AUTO: ProjectileClass no configurada")
             );
 
-        if (ResourceSpec.IsValid())
-        {
-            const FActiveGameplayEffectHandle ResourceHandle =
-                ASC->ApplyGameplayEffectSpecToSelf(*ResourceSpec.Data.Get());
-
-            const UKrerusAttributeSet* Attributes =
-                ASC->GetSet<UKrerusAttributeSet>();
-
-            if (Attributes)
-            {
-                UE_LOG(LogTemp, Verbose,
-                    TEXT("KRERUS RAGE: Jugador=%s | Ira actual=%.1f | Efecto aplicado=%s"),
-                    *GetNameSafe(C),
-                    Attributes->GetRage(),
-                    ResourceHandle.WasSuccessfullyApplied() ? TEXT("SI") : TEXT("NO"));
-            }
+            return;
         }
+
+        const FVector SpawnLocation = C->GetActorLocation() + C->GetActorForwardVector() * 100.f + FVector(0.f, 0.f, 60.f);
+
+        const FRotator SpawnRotation = (Enemy->GetActorLocation() - SpawnLocation).Rotation();
+
+        FTransform SpawnTransform(SpawnRotation, SpawnLocation);
+
+        AKrerusProjectile* Projectile = GetWorld()->SpawnActorDeferred<AKrerusProjectile>(ProjectileClass,SpawnTransform,C,C,ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+
+        if (!IsValid(Projectile))
+        {
+            UE_LOG(
+                LogTemp,
+                Warning,
+                TEXT("KRERUS AUTO: No se pudo crear el proyectil")
+            );
+
+            return;
+        }
+
+        Projectile->InitializeProjectile(Enemy, Damage, SourceASC, DamageEffectClass, OnHitResourceEffectClass, GetAbilityLevel());
+
+        Projectile->FinishSpawning(SpawnTransform);
+
+        UE_LOG(
+            LogTemp,
+            Log,
+            TEXT("KRERUS AUTO: Disparo Owner=%s Target=%s Damage=%.3f"),
+            *GetNameSafe(C),
+            *GetNameSafe(Enemy),
+            Damage
+        );
+
+        return;
     }
-    auto Context=ASC->MakeEffectContext();Context.AddSourceObject(C);
-    auto Spec=ASC->MakeOutgoingSpec(Comp->GetDamageEffectClass(),GetAbilityLevel(),Context);if(!Spec.IsValid())return;
-    Spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName(TEXT("Data.Damage"))),-Damage);
-    // Hold local weak references: target death can synchronously end this ability during effect application.
-    if(!ASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(),EnemyASC).WasSuccessfullyApplied())return;
-    if(!Enemy->IsCorpse())if(auto* State=C->GetCombatStateComponent())State->AddCombatRelation(Enemy);
-    Comp->OnAutoAttackHit.Broadcast(Enemy,Damage);
-    UE_LOG(LogTemp,Log,TEXT("KRERUS GAS AUTO: Impact Owner=%s Target=%s Game=%.6f Damage=%.3f"),*C->GetName(),*Enemy->GetName(),double(C->GetWorld()->GetTimeSeconds()),Damage);
-    if(Enemy->IsCorpse())StopAttack();
+
+    // -------------------------------------------------
+    // ATAQUE CUERPO A CUERPO
+    // -------------------------------------------------
+
+    Comp->ResolveAutoAttackHit(Enemy, Damage, SourceASC, DamageEffectClass,
+        OnHitResourceEffectClass, GetAbilityLevel());
+    // A lethal hit can already have ended this ability through its health delegate.
+    if (IsValid(Enemy) && Enemy->IsCorpse()) StopAttack();
 }
+
 void UKrerusAutoAttackAbility::RefreshPause()
 {
     if(!IsActive() || !Combat.IsValid())return;

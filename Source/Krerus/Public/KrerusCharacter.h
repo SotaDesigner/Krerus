@@ -16,6 +16,8 @@ class UKrerusCombatComponent;
 class UKrerusCombatStateComponent;
 class UAbilitySystemComponent;
 class AKrerusPlayerState;
+class UKrerusAbilityMovementComponent;
+class UGameplayEffect;
 struct FInputActionValue;
 
 /**
@@ -43,11 +45,17 @@ public:
     void MulticastAutoAttackMontage(bool bPlay, float Interval);
     UFUNCTION(BlueprintPure, Category = "Krerus|Combat|Targeting")
     AKrerusEnemy* GetStrikeTarget() const { return StrikeTarget.Get(); }
+    UFUNCTION(BlueprintPure, Category = "Krerus|Ability|Movement")
+    UKrerusAbilityMovementComponent* GetAbilityMovementComponent() const { return AbilityMovementComponent; }
 
 private:
     // Solo existe durante la activación síncrona de Strike en el servidor.
     UPROPERTY(Transient)
     TObjectPtr<AKrerusEnemy> StrikeTarget;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Krerus|Ability|Movement", meta = (AllowPrivateAccess = "true"))
+    TObjectPtr<UKrerusAbilityMovementComponent> AbilityMovementComponent;
+
 public:
     virtual void PawnClientRestart() override;
 
@@ -56,6 +64,8 @@ public:
     virtual void PossessedBy(AController* NewController) override;
 
     virtual void OnRep_PlayerState() override;
+
+    void UpdateRageFuntion(bool IsCombat);
 
 protected:
     virtual void BeginPlay() override;
@@ -160,6 +170,21 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|GAS")
     TObjectPtr<UInputAction> StrikeAction;
 
+    // Efecto GAS que regenera energía periódicamente.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|GAS|Regeneration")
+    TSubclassOf<UGameplayEffect> EnergyRegenerationEffectClass;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|GAS|Regeneration")
+    TSubclassOf<UGameplayEffect> ManaRegenerationEffectClass;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|GAS|Regeneration")
+    TSubclassOf<UGameplayEffect> RageChillEffectClass;
+        
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|GAS|Regeneration")
+    TSubclassOf<UGameplayEffect> RageBattleEffectClass;
+
+    void RecourseRegenerationFuntion(UAbilitySystemComponent* ASC, TSubclassOf<UGameplayEffect> EffectClass);
+    void RemoveRegenerationFuntion(UAbilitySystemComponent* ASC, TSubclassOf<UGameplayEffect> EffectClass);
 
     UFUNCTION()
     void OnAutoAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
