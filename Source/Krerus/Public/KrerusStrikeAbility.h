@@ -4,6 +4,7 @@
 #include "Abilities/GameplayAbility.h"
 #include "GameplayTagContainer.h"
 #include "KrerusTargetPositioningLibrary.h"
+#include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "KrerusStrikeAbility.generated.h"
 
 class AKrerusEnemy;
@@ -59,6 +60,28 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Movement", meta = (ClampMin = "1.0", EditCondition = "MovementType == EKrerusAbilityMovementType::Charge"))
     float MovementSpeed = 1200.0f;
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Healing")
+    bool bIsHealingAbility = false;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Healing", meta = (EditCondition = "bIsHealingAbility"))
+    TSubclassOf<UGameplayEffect> HealingEffectClass;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Healing", meta = (EditCondition = "bIsHealingAbility"))
+    float BaseHealing = 30.f;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Healing", meta = (EditCondition = "bIsHealingAbility"))
+    float SpellPowerHealingCoefficient = 0.8f;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Healing", meta = (EditCondition = "bIsHealingAbility"))
+    float HealingCastTime = 2.0f;
+
+    bool IsValidHealingTarget(AActor* Target) const;
+
+    void BeginHealingAbility();
+
+    UFUNCTION()
+    void OnHealingCastCompleted();
+
     // Montaje opcional de la habilidad.
     // Si es nullptr, el daño se aplica inmediatamente.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Animation")
@@ -101,4 +124,7 @@ private:
     TObjectPtr<AKrerusEnemy> PendingImpactTarget = nullptr;
 
     bool bImpactApplied = false;
+
+    UPROPERTY(Transient)
+    TObjectPtr<AActor> PendingHealingTarget = nullptr;
 };

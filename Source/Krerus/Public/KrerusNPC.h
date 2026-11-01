@@ -40,6 +40,9 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Krerus|Attributes")
     FKrerusAttributeInitialization InitialAttributes;
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Healing")
+    bool bCanReceivePlayerHealing = false;
+
 public:
     virtual void Tick(float DeltaTime) override;
 
@@ -50,10 +53,10 @@ public:
     void SetSelectionRingVisible(bool bVisible);
 
     UFUNCTION(BlueprintPure, Category = "Attributes")
-    UKrerusAttributeComponent* GetAttributeComponent() const
-    {
-        return AttributeComponent.Get();
-    }
+    UKrerusAttributeComponent* GetAttributeComponent() const { return AttributeComponent.Get();}
+
+    UFUNCTION(BlueprintPure, Category = "Krerus|Healing")
+    bool CanReceivePlayerHealing() const { return bCanReceivePlayerHealing; }
 
     float GetInteractionDistance() const
     {

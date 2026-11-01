@@ -7,7 +7,9 @@
 #include "KrerusEnemy.h"
 #include "KrerusAttributeSet.h"
 #include "KrerusCombatStateComponent.h"
+#include "KrerusNPC.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Animation/AnimMontage.h"
@@ -38,12 +40,17 @@ void UKrerusStrikeAbility::ActivateAbility(
         return;
     }
 
-    AKrerusCharacter* Character =
-        Cast<AKrerusCharacter>(ActorInfo->AvatarActor.Get());
+    AKrerusCharacter* Character = Cast<AKrerusCharacter>(ActorInfo->AvatarActor.Get());
 
     if (!IsValid(Character) || !Character->HasAuthority())
     {
         Fail();
+        return;
+    }
+
+    if (bIsHealingAbility)
+    {
+        BeginHealingAbility();
         return;
     }
 
@@ -227,6 +234,193 @@ void UKrerusStrikeAbility::ActivateAbility(
     // La habilidad sigue activa esperando impacto o fin del montaje.
 }
 
+bool UKrerusStrikeAbility::IsValidHealingTarget(AActor* Target) const
+{
+    AActor* Avatar = GetAvatarActorFromActorInfo();
+
+    if (!IsValid(Avatar) || !Avatar->HasAuthority() || !IsValid(Target) || Target->GetWorld() != Avatar->GetWorld())
+    {
+        return false;
+    }
+
+    if (Target != Avatar)
+    {
+        const AKrerusNPC* NPC = Cast<AKrerusNPC>(Target);
+        if (!NPC || Cast<AKrerusEnemy>(Target) || !NPC->CanReceivePlayerHealing())
+        {
+            return false;
+        }
+    }
+
+    UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target);
+
+    const UKrerusAttributeSet* TargetAttributes = IsValid(TargetASC) ? TargetASC->GetSet<UKrerusAttributeSet>() : nullptr;
+
+    if (!TargetAttributes || TargetAttributes->GetHealth() <= 0.0f)
+    {
+        return false;
+    }
+
+    if (!FMath::IsFinite(AbilityRange) || AbilityRange < 0.0f)
+    {
+        return false;
+    }
+
+    const float Distance = FVector::Dist(Avatar->GetActorLocation(), Target->GetActorLocation());
+
+    return FMath::IsFinite(Distance) && Distance <= AbilityRange;
+}
+
+void UKrerusStrikeAbility::BeginHealingAbility()
+{
+    UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+
+    const UKrerusAttributeSet* Attributes = IsValid(SourceASC) ? SourceASC->GetSet<UKrerusAttributeSet>() : nullptr;
+
+    if (!HealingEffectClass || !Attributes || Attributes->GetHealth() <= 0.0f || !FMath::IsFinite(HealingCastTime) || HealingCastTime < 0.0f)
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    AKrerusCharacter* Character = Cast<AKrerusCharacter>(GetAvatarActorFromActorInfo());
+
+    if (!IsValid(Character))
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    AActor* Target = Character->GetAbilityTarget();
+
+    if (!IsValid(Target))
+    {
+        Target = Character;
+    }
+
+    if (!IsValidHealingTarget(Target))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("KRERUS HEAL: Objetivo no valido"));
+
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    PendingHealingTarget = Target;
+
+    if (!CheckCost(GetCurrentAbilitySpecHandle(),GetCurrentActorInfo()) || !CheckCooldown(GetCurrentAbilitySpecHandle(),GetCurrentActorInfo()))
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    UE_LOG(LogTemp, Display, TEXT("KRERUS HEAL: Inicio de lanzamiento | Duracion=%.2f"), HealingCastTime);
+
+    if (HealingCastTime <= 0.0f)
+    {
+        OnHealingCastCompleted();
+        return;
+    }
+
+    UAbilityTask_WaitDelay* CastTask = UAbilityTask_WaitDelay::WaitDelay(this, HealingCastTime);
+
+    if (!IsValid(CastTask))
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    CastTask->OnFinish.AddDynamic(this, &UKrerusStrikeAbility::OnHealingCastCompleted);
+
+    CastTask->ReadyForActivation();
+}
+
+void UKrerusStrikeAbility::OnHealingCastCompleted()
+{
+    if (!IsActive())
+    {
+        return;
+    }
+
+    AActor* Avatar = GetAvatarActorFromActorInfo();
+    AActor* Target = PendingHealingTarget.Get();
+
+    UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+
+    const UKrerusAttributeSet* SourceAttributes = IsValid(SourceASC) ? SourceASC->GetSet<UKrerusAttributeSet>() : nullptr;
+
+    if (!IsValid(Avatar) || !Avatar->HasAuthority() || !SourceAttributes || SourceAttributes->GetHealth() <= 0.0f || !HealingEffectClass || !IsValidHealingTarget(Target))
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target);
+
+    const UKrerusAttributeSet* TargetAttributes = IsValid(TargetASC) ? TargetASC->GetSet<UKrerusAttributeSet>() : nullptr;
+
+    if (!TargetAttributes)
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    const float HealingAmount = BaseHealing + SpellPowerHealingCoefficient * SourceAttributes->GetSpellPower();
+
+    if (!FMath::IsFinite(HealingAmount) || HealingAmount <= 0.0f)
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    const FGameplayTag HealingTag = FGameplayTag::RequestGameplayTag(FName(TEXT("Data.Healing")), false);
+
+    if (!HealingTag.IsValid())
+    {
+        UE_LOG(LogTemp, Error, TEXT("KRERUS HEAL: Falta registrar Data.Healing"));
+
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+
+    Context.AddSourceObject(Avatar);
+
+    FGameplayEffectSpecHandle HealingSpec = SourceASC->MakeOutgoingSpec(HealingEffectClass, GetAbilityLevel(), Context);
+
+    if (!HealingSpec.IsValid())
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    HealingSpec.Data->SetSetByCallerMagnitude(HealingTag, HealingAmount);
+
+    if (!CommitAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo()))
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    const float HealthBefore = TargetAttributes->GetHealth();
+
+    const FActiveGameplayEffectHandle AppliedHandle = TargetASC->ApplyGameplayEffectSpecToSelf(*HealingSpec.Data.Get());
+
+    if (!AppliedHandle.WasSuccessfullyApplied())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("KRERUS HEAL: No se pudo aplicar la curacion"));
+
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    UE_LOG(LogTemp, Display, TEXT("KRERUS HEAL: Curacion=%.1f | HP %.1f -> %.1f / %.1f | Mana=%.1f"),
+        HealingAmount, HealthBefore, TargetAttributes->GetHealth(), TargetAttributes->GetMaxHealth(), SourceAttributes->GetMana());
+
+    FinishStrikeAbility(false);
+}
+
 void UKrerusStrikeAbility::OnAbilityImpact(
     FGameplayEventData Payload)
 {
@@ -283,6 +477,7 @@ void UKrerusStrikeAbility::EndAbility(
 {
     PendingImpactTarget = nullptr;
     bImpactApplied = false;
+    PendingHealingTarget = nullptr;
 
     Super::EndAbility(
         Handle,
@@ -292,8 +487,7 @@ void UKrerusStrikeAbility::EndAbility(
         bWasCancelled);
 }
 
-bool UKrerusStrikeAbility::ApplyAbilityImpact(
-    AKrerusEnemy* Target)
+bool UKrerusStrikeAbility::ApplyAbilityImpact(AKrerusEnemy* Target)
 {
     if (bImpactApplied || !IsValid(Target) || Target->IsCorpse())
     {

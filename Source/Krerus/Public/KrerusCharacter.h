@@ -40,11 +40,12 @@ public:
     UFUNCTION(Server, Reliable)
     void ServerSetAutoAttackPaused(bool bPaused);
     UFUNCTION(Server, Reliable)
-    void ServerActivateAbilitySlot(int32 Slot, AKrerusEnemy* Target);
+    void ServerActivateAbilitySlot(int32 Slot, AActor* Target);
     UFUNCTION(NetMulticast, Reliable)
     void MulticastAutoAttackMontage(bool bPlay, float Interval);
     UFUNCTION(BlueprintPure, Category = "Krerus|Combat|Targeting")
     AKrerusEnemy* GetStrikeTarget() const { return StrikeTarget.Get(); }
+    AActor* GetAbilityTarget() const { return AbilityTarget.Get(); }
     UFUNCTION(BlueprintPure, Category = "Krerus|Ability|Movement")
     UKrerusAbilityMovementComponent* GetAbilityMovementComponent() const { return AbilityMovementComponent; }
 
@@ -52,7 +53,8 @@ private:
     // Solo existe durante la activación síncrona de Strike en el servidor.
     UPROPERTY(Transient)
     TObjectPtr<AKrerusEnemy> StrikeTarget;
-
+    UPROPERTY(Transient)
+    TObjectPtr<AActor> AbilityTarget = nullptr;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Krerus|Ability|Movement", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<UKrerusAbilityMovementComponent> AbilityMovementComponent;
 

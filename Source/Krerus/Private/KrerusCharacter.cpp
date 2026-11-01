@@ -342,7 +342,7 @@ void AKrerusCharacter::MulticastAutoAttackMontage_Implementation(bool bPlay, flo
 
 void AKrerusCharacter::ServerActivateAbilitySlot_Implementation(
     int32 Slot,
-    AKrerusEnemy* Target)
+    AActor* Target)
 {
     if (!HasAuthority() || !GetController())
     {
@@ -382,19 +382,25 @@ void AKrerusCharacter::ServerActivateAbilitySlot_Implementation(
     }
 
     // Contexto de objetivo utilizado actualmente por Strike.
-    if (IsValid(Target) &&
-        Target->GetWorld() == GetWorld() &&
-        !Target->IsCorpse())
+    AbilityTarget = nullptr;
+    StrikeTarget = nullptr;
+
+    if (IsValid(Target) && Target->GetWorld() == GetWorld())
     {
-        StrikeTarget = Target;
-    }
-    else
-    {
-        StrikeTarget = nullptr;
+        AbilityTarget = Target;
+
+        // Conservamos el contexto ofensivo existente.
+        AKrerusEnemy* Enemy = Cast<AKrerusEnemy>(Target);
+
+        if (IsValid(Enemy) && !Enemy->IsCorpse())
+        {
+            StrikeTarget = Enemy;
+        }
     }
 
     ASC->TryActivateAbility(AbilityHandle);
 
+    AbilityTarget = nullptr;
     StrikeTarget = nullptr;
 }
 

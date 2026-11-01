@@ -280,12 +280,8 @@ void AKrerusCharacter::OnAutoAttack()
 // Activa la habilidad equipada en la ranura 1.
 void AKrerusCharacter::ActivateStrike()
 {
-    if (AKrerusPlayerController* PC =
-        Cast<AKrerusPlayerController>(GetController()))
+    if (AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController()))
     {
-        ServerActivateAbilitySlot(
-            1,
-            Cast<AKrerusEnemy>(PC->GetSelectedNPC())
-        );
+        ServerActivateAbilitySlot( 1, PC->GetSelectedNPC());
     }
 }
