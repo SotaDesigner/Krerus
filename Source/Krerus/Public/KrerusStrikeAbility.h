@@ -12,6 +12,14 @@ class UAnimMontage;
 class UAbilityTask_PlayMontageAndWait;
 class UAbilityTask_WaitGameplayEvent;
 class UGameplayEffect;
+class AKrerusSpellField;
+
+UENUM(BlueprintType)
+enum class EKrerusFieldPlacement : uint8
+{
+    CursorGround,
+    CasterForward
+};
 
 UENUM(BlueprintType)
 enum class EKrerusAbilityMovementType : uint8
@@ -20,6 +28,7 @@ enum class EKrerusAbilityMovementType : uint8
     Teleport UMETA(DisplayName = "Teleport"),
     Charge UMETA(DisplayName = "Charge")
 };
+
 /**
  * Habilidad GAS ejecutada en servidor que toma el enemigo seleccionado en PlayerController.
  * Aplica el Gameplay Effect configurado al ASC enemigo, sin pasar por el daño del autoataque.
@@ -74,6 +83,17 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Healing", meta = (EditCondition = "bIsHealingAbility"))
     float HealingCastTime = 2.0f;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Field")
+    bool bIsFieldAbility = false;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Field", meta = (EditCondition = "bIsFieldAbility"))
+    TSubclassOf<AKrerusSpellField> FieldClass;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Ability|Field", meta = (EditCondition = "bIsFieldAbility"))
+    EKrerusFieldPlacement FieldPlacement = EKrerusFieldPlacement::CursorGround;
+
+    void BeginFieldAbility();
 
     bool IsValidHealingTarget(AActor* Target) const;
 

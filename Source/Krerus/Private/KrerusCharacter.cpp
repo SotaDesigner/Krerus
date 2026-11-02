@@ -512,3 +512,19 @@ void AKrerusCharacter::UpdateRageFuntion(bool IsCombat)
         RecourseRegenerationFuntion(ASC, RageChillEffectClass);
     }
 }
+
+void AKrerusCharacter::ServerActivateAbilitySlotAtLocation_Implementation(int32 Slot, AActor* Target, FVector_NetQuantize GroundLocation)
+{
+    if (GroundLocation.ContainsNaN())
+    {
+        return;
+    }
+
+    AbilityGroundLocation = GroundLocation;
+    bHasAbilityGroundLocation = true;
+
+    ServerActivateAbilitySlot_Implementation(Slot, Target);
+
+    bHasAbilityGroundLocation = false;
+    AbilityGroundLocation = FVector::ZeroVector;
+}

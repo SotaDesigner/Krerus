@@ -1,4 +1,5 @@
 #include "KrerusCharacter.h"
+#include "Engine/EngineTypes.h"
 #include "KrerusCameraComponent.h"
 #include "KrerusPlayerController.h"
 #include "EnhancedInputComponent.h"
@@ -280,8 +281,22 @@ void AKrerusCharacter::OnAutoAttack()
 // Activa la habilidad equipada en la ranura 1.
 void AKrerusCharacter::ActivateStrike()
 {
-    if (AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController()))
+    AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController());
+    if (!PC || !PC->IsLocalController())
     {
-        ServerActivateAbilitySlot( 1, PC->GetSelectedNPC());
+        return;
+    }
+
+    FHitResult Hit;
+    const bool bHitGround = PC->GetHitResultUnderCursorByChannel(
+        UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1), false, Hit);
+
+    if (bHitGround && Hit.bBlockingHit)
+    {
+        ServerActivateAbilitySlotAtLocation(1, PC->GetSelectedNPC(), Hit.ImpactPoint);
+    }
+    else
+    {
+        ServerActivateAbilitySlot(1, PC->GetSelectedNPC());
     }
 }

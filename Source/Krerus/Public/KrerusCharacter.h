@@ -48,6 +48,14 @@ public:
     AActor* GetAbilityTarget() const { return AbilityTarget.Get(); }
     UFUNCTION(BlueprintPure, Category = "Krerus|Ability|Movement")
     UKrerusAbilityMovementComponent* GetAbilityMovementComponent() const { return AbilityMovementComponent; }
+    UFUNCTION(Server, Reliable)
+    void ServerActivateAbilitySlotAtLocation(int32 Slot, AActor* Target, FVector_NetQuantize GroundLocation);
+
+    bool GetAbilityGroundLocation(FVector& OutLocation) const {
+        OutLocation = AbilityGroundLocation;
+        return bHasAbilityGroundLocation;
+    }
+
 
 private:
     // Solo existe durante la activación síncrona de Strike en el servidor.
@@ -57,6 +65,10 @@ private:
     TObjectPtr<AActor> AbilityTarget = nullptr;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Krerus|Ability|Movement", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<UKrerusAbilityMovementComponent> AbilityMovementComponent;
+
+    FVector AbilityGroundLocation = FVector::ZeroVector;
+
+    bool bHasAbilityGroundLocation = false;
 
 public:
     virtual void PawnClientRestart() override;

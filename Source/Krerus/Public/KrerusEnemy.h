@@ -6,6 +6,7 @@
 #include "Net/UnrealNetwork.h"
 #include "KrerusEnemy.generated.h"
 
+class UMaterial;
 class UAbilitySystemComponent;
 class UKrerusAttributeSet;
 class UKrerusCombatStateComponent;

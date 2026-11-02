@@ -5,6 +5,7 @@
 #include "KrerusInteractable.h"
 #include "AbilitySystemInterface.h"
 #include "KrerusAttributeInitialization.h"
+#include "GameplayTagContainer.h"
 #include "KrerusNPC.generated.h"
 
 class UKrerusAttributeComponent;
@@ -23,6 +24,16 @@ class KRERUS_API AKrerusNPC : public ACharacter, public IKrerusInteractable, pub
 public:
     AKrerusNPC();
     virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+private:
+    float UnaffectedWalkSpeed = 0.f;
+
+    FDelegateHandle SlowTagDelegate;
+    FDelegateHandle RootTagDelegate;
+
+    void OnMovementStatusChanged(const FGameplayTag Tag, int32 NewCount);
+
+    void RefreshMovementStatus();
 
 protected:
     virtual void BeginPlay() override;
@@ -43,6 +54,7 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Krerus|Healing")
     bool bCanReceivePlayerHealing = false;
 
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 public:
     virtual void Tick(float DeltaTime) override;
 

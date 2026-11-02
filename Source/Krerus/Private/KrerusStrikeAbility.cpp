@@ -8,7 +8,11 @@
 #include "KrerusAttributeSet.h"
 #include "KrerusCombatStateComponent.h"
 #include "KrerusNPC.h"
+#include "KrerusSpellField.h"
 
+#include "Engine/World.h"
+#include "Engine/EngineTypes.h"
+#include "CollisionQueryParams.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
@@ -45,6 +49,18 @@ void UKrerusStrikeAbility::ActivateAbility(
     if (!IsValid(Character) || !Character->HasAuthority())
     {
         Fail();
+        return;
+    }
+
+    if (bIsFieldAbility)
+    {
+        if (bIsHealingAbility)
+        {
+            FinishStrikeAbility(true);
+            return;
+        }
+
+        BeginFieldAbility();
         return;
     }
 
@@ -592,4 +608,118 @@ bool UKrerusStrikeAbility::ApplyAbilityImpact(AKrerusEnemy* Target)
         *GetNameSafe(Target));
 
     return true;
+}
+
+void UKrerusStrikeAbility::BeginFieldAbility()
+{
+    AKrerusCharacter* Character = Cast<AKrerusCharacter>(GetAvatarActorFromActorInfo());
+
+    UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+
+    const UKrerusAttributeSet* Attributes = IsValid(ASC) ? ASC->GetSet<UKrerusAttributeSet>() : nullptr;
+
+    UWorld* World = GetWorld();
+
+    if (!IsValid(Character) || !Character->HasAuthority() || !World || !Attributes || Attributes->GetHealth() <= 0.f ||
+        !FieldClass || !FMath::IsFinite(AbilityRange) || AbilityRange < 0.f)
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    FVector Location;
+    FRotator Rotation(0.f, Character->GetActorRotation().Yaw, 0.f);
+
+    if (FieldPlacement == EKrerusFieldPlacement::CursorGround)
+    {
+        FVector RequestedLocation;
+
+        if (!Character->GetAbilityGroundLocation(RequestedLocation) || RequestedLocation.ContainsNaN())
+        {
+            FinishStrikeAbility(true);
+            return;
+        }
+
+        if (FVector::DistSquared(Character->GetActorLocation(), RequestedLocation) > FMath::Square(AbilityRange))
+        {
+            FinishStrikeAbility(true);
+            return;
+        }
+
+        FCollisionQueryParams Params;
+        Params.AddIgnoredActor(Character);
+
+        FHitResult GroundHit;
+
+        const bool bFoundGround = World->LineTraceSingleByChannel(GroundHit, RequestedLocation + FVector(0.f, 0.f, 100.f),
+            RequestedLocation - FVector(0.f,0.f,100.f), ECC_GameTraceChannel1, Params);
+
+        if (!bFoundGround || GroundHit.ImpactNormal.Z < 0.7f || FVector::DistSquared(GroundHit.ImpactPoint, RequestedLocation) > FMath::Square(30.f))
+        {
+            FinishStrikeAbility(true);
+            return;
+        }
+
+        Location = GroundHit.ImpactPoint;
+
+        if (FVector::DistSquared(Character->GetActorLocation(), Location) > FMath::Square(AbilityRange))
+        {
+            FinishStrikeAbility(true);
+            return;
+        }
+
+        FHitResult ObstancleHit;
+
+        const FVector Start = Character->GetActorLocation();
+
+        const FVector End = Location + FVector(0.f, 0.f, 30.f);
+
+        if (World->LineTraceSingleByChannel(ObstancleHit, Start, End, ECC_Visibility, Params))
+        {
+            FinishStrikeAbility(true);
+            return;
+        }
+    }
+    else
+    {
+        Location = Character->GetActorLocation();
+    }
+
+    const auto Handle = GetCurrentAbilitySpecHandle();
+    const auto* Info = GetCurrentActorInfo();
+    const auto Activation = GetCurrentActivationInfo();
+
+    if (!CheckCost(Handle, Info) || !CheckCooldown(Handle, Info))
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    const FTransform Transform(Rotation, Location);
+
+    AKrerusSpellField* Field = World->SpawnActorDeferred<AKrerusSpellField>(FieldClass, Transform, Character, Character, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+
+    if (!Field)
+    {
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    if (!CommitAbility(Handle, Info, Activation))
+    {
+        Field->Destroy();
+        FinishStrikeAbility(true);
+        return;
+    }
+
+    Field->FinishSpawning(Transform);
+
+    const bool bInitialized = IsValid(Field) && Field->InitializeField(Character, GetAbilityLevel());
+
+    if (!bInitialized && IsValid(Field))
+    {
+        Field->Destroy();
+    }
+
+    FinishStrikeAbility(!bInitialized);
 }
