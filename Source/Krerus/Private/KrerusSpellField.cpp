@@ -141,7 +141,9 @@ bool AKrerusSpellField::InitializeField(AKrerusCharacter* InCaster, float InAbil
 
 	if (Application == EKrerusFieldApplication::Once)
 	{
-		Destroy();
+		// Keep the visual alive without applying the field again.
+		DetectionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		SetLifeSpan(FieldDuration);
 		return true;
 	}
 

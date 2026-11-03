@@ -612,6 +612,8 @@ bool UKrerusStrikeAbility::ApplyAbilityImpact(AKrerusEnemy* Target)
 
 void UKrerusStrikeAbility::BeginFieldAbility()
 {
+    UE_LOG(LogTemp, Warning, TEXT("KRERUS: Inicio de habilidad de campo"));
+
     AKrerusCharacter* Character = Cast<AKrerusCharacter>(GetAvatarActorFromActorInfo());
 
     UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();

@@ -1,5 +1,7 @@
 #include "KrerusCharacter.h"
 #include "Engine/EngineTypes.h"
+#include "Engine/Engine.h"
+#include "Engine/LocalPlayer.h"
 #include "KrerusCameraComponent.h"
 #include "KrerusPlayerController.h"
 #include "EnhancedInputComponent.h"
@@ -281,6 +283,8 @@ void AKrerusCharacter::OnAutoAttack()
 // Activa la habilidad equipada en la ranura 1.
 void AKrerusCharacter::ActivateStrike()
 {
+    UE_LOG(LogTemp, Warning, TEXT("KRERUS: Tecla 1 recibida"));
+
     AKrerusPlayerController* PC = Cast<AKrerusPlayerController>(GetController());
     if (!PC || !PC->IsLocalController())
     {
